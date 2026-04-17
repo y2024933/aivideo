@@ -55,6 +55,11 @@ Header、Footer、Navigation 直接寫在每個 HTML 檔中（無 template engin
 - class / id / 變數名：英文
 - 註解說明、文案內容：繁體中文
 
+## Agent 分工規則
+
+- **planner 規劃時**：若任務涉及前端畫面（HTML/CSS/JS 頁面新增或修改），必須派給 **小前**（executor agent，subagent_type=executor）處理實際的程式碼撰寫與修改。
+- planner 負責分析需求、設計方案；小前負責根據方案執行前端程式碼的編寫。
+
 ## 參考文件（不自動載入，需要時 Read）
 
 - `docs/workflow-rules.md` — 需求分析流程、修改建議原則
