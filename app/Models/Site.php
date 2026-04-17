@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,7 +17,6 @@ class Site extends Model
         'slug',
         'name',
         'brand_name',
-        'primary_domain',
         'theme_key',
         'primary_color',
         'secondary_color',
@@ -38,9 +38,18 @@ class Site extends Model
         'has_projects' => 'boolean',
     ];
 
+    protected $appends = ['primary_domain'];
+
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    protected function primaryDomain(): Attribute
+    {
+        return Attribute::get(fn () => $this->relationLoaded('domains')
+            ? $this->domains->firstWhere('is_primary', true)?->domain
+            : $this->domains()->where('is_primary', true)->value('domain'));
     }
 
     public function domains(): HasMany

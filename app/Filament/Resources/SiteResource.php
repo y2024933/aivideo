@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SiteResource\Pages;
+use App\Filament\Resources\SiteResource\RelationManagers;
 use App\Models\Site;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
@@ -43,7 +44,6 @@ class SiteResource extends Resource
                 TextInput::make('name')->label('網站名稱')->required()->maxLength(255),
                 TextInput::make('brand_name')->label('品牌英文')->maxLength(255),
                 TextInput::make('slug')->label('代碼')->required()->alphaDash()->unique(ignoreRecord: true),
-                TextInput::make('primary_domain')->label('主網域')->maxLength(255),
                 TextInput::make('theme_key')->label('主題 Key')->required()->default('builder-classic'),
                 TextInput::make('contact_email')->label('聯絡信箱')->email(),
                 TextInput::make('primary_color')->label('主色'),
@@ -72,7 +72,7 @@ class SiteResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label('網站')->searchable()->sortable(),
-                TextColumn::make('primary_domain')->label('網域')->searchable(),
+                TextColumn::make('domains.domain')->label('主網域'),
                 TextColumn::make('theme_key')->label('主題'),
                 IconColumn::make('is_active')->label('啟用')->boolean(),
             ])
@@ -93,7 +93,9 @@ class SiteResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            RelationManagers\DomainsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

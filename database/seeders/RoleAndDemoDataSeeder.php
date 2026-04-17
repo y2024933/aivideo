@@ -52,7 +52,6 @@ class RoleAndDemoDataSeeder extends Seeder
             [
                 'name' => '大宅威建設',
                 'brand_name' => '金州開發建設',
-                'primary_domain' => 'dzw.local',
                 'theme_key' => 'builder-classic',
                 'primary_color' => '#2c3e50',
                 'secondary_color' => '#c0965c',
@@ -75,7 +74,6 @@ class RoleAndDemoDataSeeder extends Seeder
             [
                 'name' => '泉宇建設',
                 'brand_name' => 'CHYUAN YEU',
-                'primary_domain' => 'chyuanyeu.local',
                 'theme_key' => 'builder-editorial',
                 'primary_color' => '#184c61',
                 'secondary_color' => '#b59a6a',
