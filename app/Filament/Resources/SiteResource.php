@@ -72,7 +72,7 @@ class SiteResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label('網站')->searchable()->sortable(),
-                TextColumn::make('domains.domain')->label('主網域'),
+                TextColumn::make('domains.domain')->label('網域'),
                 TextColumn::make('theme_key')->label('主題'),
                 IconColumn::make('is_active')->label('啟用')->boolean(),
             ])

@@ -107,7 +107,7 @@ const accentStyle = computed(() => ({
                         <dl class="mt-6 space-y-4 text-sm" :class="isEditorial ? 'text-stone-700' : 'text-stone-300'">
                             <div class="flex justify-between gap-6 border-b pb-4" :class="isEditorial ? 'border-stone-200' : 'border-white/10'">
                                 <dt>主網域</dt>
-                                <dd>{{ site.primary_domain || '本機預覽' }}</dd>
+                                <dd>{{ site.domains?.[0]?.domain || '本機預覽' }}</dd>
                             </div>
                             <div class="flex justify-between gap-6 border-b pb-4" :class="isEditorial ? 'border-stone-200' : 'border-white/10'">
                                 <dt>主題</dt>

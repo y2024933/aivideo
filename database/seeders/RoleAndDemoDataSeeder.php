@@ -63,7 +63,7 @@ class RoleAndDemoDataSeeder extends Seeder
 
         SiteDomain::updateOrCreate(
             ['domain' => 'dzw.local'],
-            ['site_id' => $siteA->id, 'is_primary' => true]
+            ['site_id' => $siteA->id]
         );
 
         // =====================================================================
@@ -85,7 +85,7 @@ class RoleAndDemoDataSeeder extends Seeder
 
         SiteDomain::updateOrCreate(
             ['domain' => 'chyuanyeu.local'],
-            ['site_id' => $siteB->id, 'is_primary' => true]
+            ['site_id' => $siteB->id]
         );
 
         // =====================================================================
