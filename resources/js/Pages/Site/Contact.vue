@@ -46,21 +46,23 @@ function submit() {
 
 <template>
     <SiteLayout :title="page?.title || '聯絡我們'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
-        <section class="mx-auto max-w-7xl px-6 py-16">
+        <section class="mx-auto max-w-7xl px-6 py-20">
             <h1 class="text-5xl font-semibold">{{ page?.title || '聯絡我們' }}</h1>
 
             <div v-if="flash.success || showSuccess" class="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 {{ flash.success || '已收到您的訊息，我們會盡快與您聯繫。' }}
             </div>
 
-            <div class="mt-8 grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
+            <div class="mt-12 grid min-h-[calc(100vh-320px)] items-center gap-12 lg:grid-cols-2">
                 <!-- 左：文案 -->
                 <div class="flex flex-col justify-center">
-                    <p class="whitespace-pre-line text-[15px] leading-8 text-stone-500">{{ page?.summary || '讓家的溫度從這一刻的交流開始。' }}</p>
+                    <div v-if="page?.content" class="prose prose-stone max-w-none text-[15px] leading-8 text-stone-500 [&_p:empty]:min-h-[1em]" v-html="page.content"></div>
+                    <p v-else class="whitespace-pre-line text-[15px] leading-8 text-stone-500">讓家的溫度從這一刻的交流開始。</p>
                 </div>
 
                 <!-- 右：表單 -->
-                <div>
+                <div class="flex items-start justify-center border-l border-stone-200 pl-10">
+                <div class="w-full">
                 <p class="mb-5 text-sm text-stone-500">歡迎留下您的寶貴意見，我們將派專人為您服務。謝謝!! (<span class="text-red-500 text-xs">＊</span> 為必填 )</p>
                 <form class="space-y-2" @submit.prevent="submit">
                     <div class="flex items-center gap-3">
@@ -108,6 +110,7 @@ function submit() {
                     </div>
                     <p v-if="form.errors.captcha" class="text-xs text-rose-400">{{ form.errors.captcha }}</p>
                 </form>
+                </div>
                 </div>
             </div>
         </section>

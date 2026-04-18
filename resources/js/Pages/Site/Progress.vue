@@ -53,12 +53,12 @@ function formatYear(dateStr) {
 
         <!-- ===== 閘門：未驗證時顯示 ===== -->
         <template v-if="!isAuthenticated">
-            <section class="mx-auto max-w-6xl px-6 py-20">
+            <section class="mx-auto max-w-7xl px-6 py-20">
                 <h1 class="text-5xl font-semibold">{{ page?.title || '工程進度' }}</h1>
                 <div class="mt-12 grid min-h-[calc(100vh-320px)] items-center gap-12 lg:grid-cols-2">
                 <!-- 左：說明文字 -->
                 <div class="flex flex-col justify-center">
-                    <div class="space-y-4 text-[15px] leading-8 text-stone-600" v-if="page?.content" v-html="page.content"></div>
+                    <div class="prose prose-stone max-w-none text-[15px] leading-8 text-stone-600" v-if="page?.content" v-html="page.content"></div>
                     <div class="mt-8 space-y-4 text-[15px] leading-8 text-stone-600" v-else>
                         <p>建築的價值，藏在每一道看不見的工序之中</p>
                         <p>在這裡，我們完整揭露建築的成形過程——<br>從地基開挖、結構施作、水電配置到每一處細節修整，<br>每一道工序皆如實紀錄，透明呈現，<br>這不僅是工程進度的更新，更是對「品質至上、責任承諾」的具體實踐。</p>

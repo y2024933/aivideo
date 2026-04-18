@@ -31,40 +31,61 @@
 
 **版本 1**
 ```
-[feat] 新增工程進度時間軸區塊
+[feat] 新增 Favicon 上傳功能
 
-- 新增 progress.html 時間軸結構
-- 新增對應 CSS 樣式與 RWD 處理
+- sites 表新增 favicon_path 欄位
+- SiteResource 加入 Favicon FileUpload
+- SiteLayout.vue 自動輸出 link rel="icon"
 ```
 
 **版本 2**
 ```
-[feat] 實作工程進度頁面
+[feat] 後台支援 Favicon 設定與前台自動載入
 ```
 
 **版本 3**
 ```
-[feat] 工程進度頁面上線
+[feat] 站台 Favicon 功能
 ```
 
 ### 修復錯誤
 
 **版本 1**
 ```
-[fix] 修正手機版導覽列無法關閉問題
+[fix] 修正多站台資料隔離問題
 
-- 調整 menu-trigger 事件綁定邏輯
-- 修正 CSS transition 衝突
+- getEloquentQuery 加入 site_id 過濾
+- 修正 site_admin 可看到其他站台資料
 ```
 
 **版本 2**
 ```
-[fix] 修正漢堡選單關閉異常
+[fix] 修正後台資料未正確隔離站台
 ```
 
 **版本 3**
 ```
-[fix] 手機版選單修復
+[fix] 多站台權限修復
+```
+
+### 重構
+
+**版本 1**
+```
+[refactor] 更新 agent 定義與 docs 至 Laravel + Vue 技術棧
+
+- 6 個 agent 從靜態 HTML 規則改為 Laravel/Filament/Vue
+- docs 同步更新（code-style、workflow、review）
+```
+
+**版本 2**
+```
+[refactor] agent 與 docs 對齊目前 Laravel + Vue 架構
+```
+
+**版本 3**
+```
+[docs] 全面更新開發文件與 agent 定義
 ```
 
 ---
@@ -74,29 +95,29 @@
 ### 1. 描述應具體明確
 
 不好：`[feat] 更新頁面` / `[fix] 修正問題`
-好：`[feat] 新增建案作品輪播區塊` / `[fix] 修正首頁影片手機版溢出`
+好：`[feat] 新增工程進度相簿功能` / `[fix] 修正首頁 Hero 圖片手機版溢出`
 
 ### 2. 依據修改範圍選擇描述層級
 
 **小範圍**（單一檔案）：
 ```
-[fix] 修正 footer 電話連結錯誤
+[fix] 修正 SiteResource favicon FileUpload 缺少 imageEditor
 ```
 
 **中範圍**（多個檔案）：
 ```
-[feat] 新增聯絡我們頁面
+[feat] 新增站台追蹤碼設定
 
-- 新增 contact.html 頁面結構
-- 新增表單樣式與驗證
-- 更新導覽列連結
+- SiteSetting 加入 GA4、GTM、Meta Pixel、LINE Tag 欄位
+- SiteLayout.vue 自動注入追蹤碼
 ```
 
-**大範圍**（全站變更）：
+**大範圍**（跨後端 + 前端）：
 ```
-[refactor] 重構全站導覽列結構
+[feat] 實作多站台聯絡表單
 
-- 統一所有頁面 header 結構
-- 調整手機版選單動畫
-- 更新所有頁面的 nav 連結
+- 新增 ContactMessage Model + Migration
+- 新增 Filament ContactMessageResource
+- SiteController 加入 submitContact
+- 前台 Contact.vue 表單驗證與送出
 ```

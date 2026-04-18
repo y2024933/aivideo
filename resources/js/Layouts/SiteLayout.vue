@@ -90,7 +90,9 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head :title="title" />
+    <Head :title="title">
+        <link v-if="site.favicon_path" rel="icon" :href="mediaUrl(site.favicon_path)" />
+    </Head>
 
     <div
         :class="[

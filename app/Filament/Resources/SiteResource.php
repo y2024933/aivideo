@@ -6,6 +6,7 @@ use App\Filament\Resources\SiteResource\Pages;
 use App\Filament\Resources\SiteResource\RelationManagers;
 use App\Models\Site;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -44,7 +45,11 @@ class SiteResource extends Resource
                 TextInput::make('name')->label('網站名稱')->required()->maxLength(255),
                 TextInput::make('brand_name')->label('品牌英文')->maxLength(255),
                 TextInput::make('slug')->label('代碼')->required()->alphaDash()->unique(ignoreRecord: true),
-                TextInput::make('theme_key')->label('主題 Key')->required()->default('builder-classic'),
+                Select::make('theme_key')->label('主題')->required()->default('builder-classic')
+                    ->options([
+                        'builder-classic' => 'Classic — 白底極簡風',
+                        'builder-editorial' => 'Editorial — 文藝風',
+                    ]),
                 TextInput::make('contact_email')->label('聯絡信箱')->email(),
                 TextInput::make('primary_color')->label('主色'),
                 TextInput::make('secondary_color')->label('輔色'),
@@ -55,6 +60,12 @@ class SiteResource extends Resource
                     ->directory('site-logos')
                     ->image()
                     ->imageEditor()
+                    ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
+                FileUpload::make('favicon_path')
+                    ->label('Favicon')
+                    ->disk('public')
+                    ->directory('site-favicons')
+                    ->image()
                     ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
             ]),
             Grid::make(2)->schema([

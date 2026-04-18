@@ -69,6 +69,7 @@ class ProjectResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('site.name')->label('網站')->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
                 TextColumn::make('name')->label('建案名稱')->searchable()->sortable(),
                 TextColumn::make('status')->label('作品類型')
                     ->formatStateUsing(fn (string $state) => match ($state) {

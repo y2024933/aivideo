@@ -20,6 +20,7 @@ class Site extends Model
         'primary_color',
         'secondary_color',
         'logo_path',
+        'favicon_path',
         'contact_email',
         'contact_phone',
         'is_active',
@@ -80,11 +81,6 @@ class Site extends Model
     public function navigationItems(): HasMany
     {
         return $this->hasMany(NavigationItem::class);
-    }
-
-    public function mediaAssets(): HasMany
-    {
-        return $this->hasMany(MediaAsset::class);
     }
 
     public function users(): BelongsToMany

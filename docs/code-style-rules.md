@@ -2,119 +2,103 @@
 
 ## 適用範圍
 
-本規範適用於專案的 HTML、CSS、JavaScript 代碼撰寫。
+本規範適用於專案的 PHP（Laravel）、Vue 3、Tailwind CSS 代碼撰寫。
 所有新增或修改的代碼應遵循以下風格，確保與既有程式碼一致。
 
 ---
 
 ## 1. 命名規範
 
-### 1.1 HTML
+### 1.1 PHP / Laravel
 
-- id / class：使用 kebab-case（如 `site-header`、`menu-trigger`、`home-header-overlay`）
-- 語意化命名，避免用途不明的名稱（如 `div1`、`box2`）
+- 類別名：PascalCase（如 `SiteController`、`ProjectResource`）
+- 方法 / 變數：camelCase（如 `getSiteSettings`、`$currentSite`）
+- 常數：UPPER_SNAKE_CASE（如 `MAX_UPLOAD_SIZE`）
+- Migration / config / route 檔名：snake_case
+- Model 屬性：snake_case（對應資料庫欄位）
 
-### 1.2 CSS
+### 1.2 Vue / JavaScript
 
-- class 命名：kebab-case，語意化描述用途
-- 避免過深的巢狀選擇器（建議不超過 3 層）
-- 顏色、間距等可復用的值考慮使用 CSS 自訂屬性（`--變數名`）
+- 組件檔名：PascalCase（如 `SiteLayout.vue`、`ProjectCard.vue`）
+- 變數 / 函式：camelCase（如 `menuOpen`、`toggleMenu`）
+- 常數：UPPER_SNAKE_CASE
+- Props：camelCase（如 `routeMap`、`isPreview`）
+- Emits：kebab-case（如 `update:modelValue`）
 
-### 1.3 JavaScript
+### 1.3 CSS
 
-- 變數 / 函式：camelCase（如 `menuTrigger`、`handleClick`）
-- 常數：UPPER_SNAKE_CASE（如 `MAX_RETRY`、`ANIMATION_DURATION`）
-- DOM 元素變數建議加前綴或後綴（如 `$menuBtn` 或 `menuEl`）
-
----
-
-## 2. HTML 結構
-
-### 2.1 頁面基本結構
-
-```html
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>頁面標題</title>
-  <meta name="description" content="頁面描述">
-  <!-- 字型 -->
-  <!-- 樣式 -->
-</head>
-<body>
-  <header class="site-header">...</header>
-  <main>...</main>
-  <footer class="site-footer">...</footer>
-  <!-- 腳本 -->
-</body>
-</html>
-```
-
-### 2.2 語意化標籤
-
-- `<header>` — 頁首
-- `<nav>` — 導覽列
-- `<main>` — 主要內容
-- `<section>` — 內容區塊
-- `<article>` — 獨立內容
-- `<footer>` — 頁尾
+- Tailwind utility class 優先
+- 自訂 class：kebab-case（如 `site-header`、`classic-footer`）
+- CSS 變數：`--site-primary`、`--site-secondary`
 
 ---
 
-## 3. CSS 規範
+## 2. PHP / Laravel 規範
 
-### 3.1 檔案組織
+### 2.1 Controller
 
-全站使用單一 `style.css`，按區塊組織：
+- Web Controller 優先使用 Form Request 驗證
+- Inertia 頁面回傳 `Inertia::render()` 或 `redirect()`
+- Filament Resource / Action 依 Filament 既有模式處理
 
-```css
-/* ===== Reset / Base ===== */
-/* ===== Layout ===== */
-/* ===== Header ===== */
-/* ===== Navigation ===== */
-/* ===== Hero ===== */
-/* ===== Sections ===== */
-/* ===== Footer ===== */
-/* ===== Components ===== */
-/* ===== Utilities ===== */
-/* ===== Media Queries ===== */
-```
+### 2.2 Eloquent
 
-### 3.2 RWD
+- 用 `with()` 預載關聯，避免 N+1
+- 批次更新用 `update()` 或 `upsert()`
+- 查詢條件善用 scope
 
-- 以 media query 處理響應式設計
-- 測試桌面版與手機版的顯示效果
-- 斷點依設計稿需求設定
+### 2.3 Migration
+
+- 新增欄位應考慮既有資料遷移，必要時用 nullable / default
+- 提供 `down()` 方法
+- 欄位位置用 `after()` 保持邏輯順序
 
 ---
 
-## 4. JavaScript 規範
+## 3. Vue 3 規範
 
-### 4.1 檔案組織
+### 3.1 組件結構
 
-全站使用單一 `main.js`，原生 JS，不依賴外部函式庫。
+```vue
+<script setup>
+import { computed, ref } from 'vue';
 
-### 4.2 事件處理
-
-```javascript
-// 使用 addEventListener
-document.querySelector('.menu-trigger').addEventListener('click', function() {
-  // 處理邏輯
+const props = defineProps({
+    title: { type: String, required: true },
 });
+</script>
 
-// DOMContentLoaded 確保 DOM 載入完成
-document.addEventListener('DOMContentLoaded', function() {
-  // 初始化邏輯
-});
+<template>
+    <!-- 模板內容 -->
+</template>
+
+<style scoped>
+/* 僅在必要時使用 scoped style */
+</style>
 ```
 
-### 4.3 避免事項
+### 3.2 重點原則
 
-- 避免使用 `var`，優先使用 `const`，需要重新賦值時用 `let`
-- 避免在全域範圍宣告過多變數
-- 避免 inline event handler（如 `onclick="..."`）
+- 使用 `<script setup>` 語法
+- `defineProps` / `defineEmits` 按需使用
+- 善用 computed 與 composable 抽共用邏輯
+- 媒體路徑透過 `useMedia()` 的 `mediaUrl()` 取得
+- Inertia Head 管理頁面 title / meta
+
+---
+
+## 4. CSS / Tailwind 規範
+
+### 4.1 優先順序
+
+1. Tailwind utility class（優先）
+2. 沿用現有 `resources/css/app.css` 的自訂樣式
+3. 組件 `<style scoped>`（跨頁共用樣式不要用 scoped）
+
+### 4.2 RWD
+
+- Tailwind 的 responsive prefix（`md:`, `lg:` 等）
+- 測試手機版與桌面版的顯示效果
 
 ---
 
@@ -126,28 +110,24 @@ document.addEventListener('DOMContentLoaded', function() {
 - 註解說明：繁體中文
 - 頁面文案內容：繁體中文
 
-### 5.2 CSS 區塊註解
+### 5.2 PHP 註解
 
-```css
-/* ===== Header ===== */
-.site-header { ... }
-
-/* 手機版漢堡選單 */
-.menu-trigger { ... }
+```php
+// 取得目前站台設定
+$settings = $site->setting;
 ```
 
-### 5.3 JS 註解
+### 5.3 Vue 註解
 
-```javascript
-// 漢堡選單開關
-function toggleMenu() { ... }
+```vue
+<!-- 手機版漢堡選單 -->
+<button class="mobile-trigger" @click="toggleMenu">
 ```
 
 ---
 
-## 6. 圖片與素材
+## 6. 檔案與素材
 
-- 圖片放在 `assets/media/`
-- 檔名使用 kebab-case（如 `hero-placeholder.mp4`）
-- 圖片應適當壓縮，避免過大檔案影響載入速度
-- 使用適當的圖片格式（照片用 WebP/JPG，圖示用 SVG/PNG）
+- 上傳檔案透過 Filament FileUpload，存放於 `storage/app/public/`
+- 檔名使用 kebab-case
+- 圖片應適當壓縮，使用適當格式（照片 WebP/JPG，圖示 SVG/PNG）

@@ -80,6 +80,7 @@ class ProgressUpdateResource extends Resource
         return $table
             ->defaultSort('reported_at', 'desc')
             ->columns([
+                TextColumn::make('site.name')->label('網站')->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
                 TextColumn::make('project.name')
                     ->label('建案')
                     ->searchable()

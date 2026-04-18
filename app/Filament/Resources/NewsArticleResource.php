@@ -67,6 +67,7 @@ class NewsArticleResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('site.name')->label('網站')->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
                 TextColumn::make('title')->label('標題')->searchable()->sortable(),
                 TextColumn::make('category')->label('分類'),
                 TextColumn::make('published_at')->label('發布時間')->dateTime('Y-m-d H:i'),

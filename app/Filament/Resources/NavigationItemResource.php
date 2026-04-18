@@ -114,7 +114,13 @@ class NavigationItemResource extends Resource
                     ->toggleable(),
                 TextColumn::make('position')
                     ->label('位置')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'primary' => '第一層 Header',
+                        'secondary' => '第二層 Header',
+                        'footer' => 'Footer',
+                        default => $state,
+                    }),
                 TextColumn::make('label')
                     ->label('名稱')
                     ->searchable()
