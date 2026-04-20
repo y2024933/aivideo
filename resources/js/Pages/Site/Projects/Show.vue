@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import SiteLayout from '@/Layouts/SiteLayout.vue';
 import { useMedia } from '@/composables/useMedia';
+import { useSeo } from '@/composables/useSeo';
 
 const { mediaUrl } = useMedia();
 
@@ -10,16 +11,28 @@ const props = defineProps({
     navigation: Object,
     routeMap: Object,
     isPreview: Boolean,
+    metaDescription: String,
     project: Object,
     progressUpdates: Array,
     relatedProjects: Array,
+});
+
+const { seo } = useSeo({
+    title: props.project.name,
+    description: props.metaDescription || props.project.summary || '',
+    image: props.project.featured_image_path || props.project.cover_image_path,
+    breadcrumbs: [
+        { name: '首頁', url: '/' },
+        { name: '建築業績', url: '/projects' },
+        { name: props.project.name },
+    ],
 });
 
 const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
 </script>
 
 <template>
-    <SiteLayout :title="project.name" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
+    <SiteLayout :title="project.name" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
         <!-- 主要資訊區：左大圖 + 右側資訊 -->
         <section class="mx-auto max-w-7xl px-6 pt-20 pb-10">
             <a :href="routeMap.projects" class="text-sm text-stone-500 transition hover:text-[var(--site-primary)]">← 返回建築業績</a>

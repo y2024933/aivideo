@@ -1,7 +1,9 @@
 <script setup>
 import { computed } from 'vue';
 import SiteLayout from '@/Layouts/SiteLayout.vue';
+import FaqSection from '@/Components/FaqSection.vue';
 import { useMedia } from '@/composables/useMedia';
+import { useSeo } from '@/composables/useSeo';
 
 const { mediaUrl } = useMedia();
 
@@ -10,6 +12,7 @@ const props = defineProps({
     navigation: Object,
     routeMap: Object,
     isPreview: Boolean,
+    metaDescription: String,
     aboutPage: Object,
     projectsPage: Object,
     newsPage: Object,
@@ -22,13 +25,42 @@ const props = defineProps({
     classicProjects: Array,
 });
 
+const { seo } = useSeo({
+    title: props.site.seo_defaults?.title || props.site.name,
+    description: props.metaDescription || props.site.seo_defaults?.description || '',
+    image: props.site.logo_path,
+    type: 'website',
+    breadcrumbs: [{ name: '首頁', url: '/' }],
+    jsonLd: {
+        '@type': 'LocalBusiness',
+        name: props.site.name,
+        address: props.site.footer_content?.address,
+        telephone: props.site.footer_content?.phone,
+        email: props.site.footer_content?.email,
+        ...(props.site.footer_content?.opening_hours && {
+            openingHours: props.site.footer_content.opening_hours.split(',').map(s => s.trim()),
+        }),
+        ...(props.site.footer_content?.latitude && props.site.footer_content?.longitude && {
+            geo: {
+                '@type': 'GeoCoordinates',
+                latitude: parseFloat(props.site.footer_content.latitude),
+                longitude: parseFloat(props.site.footer_content.longitude),
+            },
+        }),
+        ...(props.site.footer_content?.area_served && {
+            areaServed: props.site.footer_content.area_served.split(',').map(s => s.trim()),
+        }),
+    },
+    faqItems: props.site.seo_defaults?.faq_items,
+});
+
 const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
 const isEditorial = computed(() => !isClassic.value);
 const heroBg = computed(() => mediaUrl(props.site.hero_content?.background_image || props.featuredProjects?.[0]?.featured_image_path));
 </script>
 
 <template>
-    <SiteLayout :title="site.seo_defaults?.title || site.name" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
+    <SiteLayout :title="site.seo_defaults?.title || site.name" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="{ meta, jsonLdScript }">
 
         <!-- ===================================================================== -->
         <!-- CLASSIC THEME — 5 Section 全屏式首頁                                    -->
@@ -194,6 +226,8 @@ const heroBg = computed(() => mediaUrl(props.site.hero_content?.background_image
                 </div>
             </section>
         </template>
+
+        <FaqSection v-if="site.seo_defaults?.faq_items?.length" :items="site.seo_defaults.faq_items" />
 
     </SiteLayout>
 </template>

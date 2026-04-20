@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\CleansTrixContent;
+use App\Traits\OptimizesImages;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,9 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class NewsArticle extends Model
 {
-    use HasFactory, CleansTrixContent, LogsActivity;
+    use HasFactory, CleansTrixContent, LogsActivity, OptimizesImages;
+
+    public function imageFields(): array { return ['featured_image_path']; }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -33,6 +36,7 @@ class NewsArticle extends Model
         'summary',
         'content',
         'featured_image_path',
+        'featured_image_alt',
         'published_at',
         'is_published',
         'sort_order',

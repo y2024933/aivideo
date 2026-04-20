@@ -6,6 +6,7 @@ use App\Filament\Resources\SiteResource\Pages;
 use App\Filament\Resources\SiteResource\RelationManagers;
 use App\Models\Site;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Grid;
@@ -60,6 +61,7 @@ class SiteResource extends Resource
                     ->image()
                     ->imageEditor()
                     ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
+                TextInput::make('logo_alt')->label('Logo Alt Text')->helperText('描述 Logo 內容，有助 SEO 與無障礙')->maxLength(255),
                 FileUpload::make('favicon_path')
                     ->label('Favicon')
                     ->disk('public')
@@ -80,11 +82,36 @@ class SiteResource extends Resource
                 TextInput::make('seo_defaults.title')->label('SEO 標題'),
                 Textarea::make('seo_defaults.description')->label('SEO 描述')->rows(3),
             ]),
+            Section::make('GEO（AI 搜尋優化）')->schema([
+                Textarea::make('seo_defaults.llms_description')->label('AI 搜尋描述')
+                    ->rows(4)
+                    ->helperText('給 AI 搜尋引擎（ChatGPT、Perplexity、Gemini）看的公司簡介，自動產生 /llms.txt')
+                    ->columnSpanFull(),
+            ]),
+            Section::make('AEO（答案引擎優化）')->schema([
+                Repeater::make('seo_defaults.faq_items')
+                    ->label('首頁 FAQ 問答')
+                    ->schema([
+                        TextInput::make('question')->label('問題')->required(),
+                        Textarea::make('answer')->label('回答')->required()->rows(3),
+                    ])
+                    ->helperText('首頁顯示的常見問題，同時產生 FAQPage JSON-LD 爭取 Google 精選摘要')
+                    ->collapsible()
+                    ->columnSpanFull(),
+            ]),
             Section::make('頁尾資訊')->schema([
                 TextInput::make('footer_content.address')->label('地址'),
                 TextInput::make('footer_content.phone')->label('電話'),
                 TextInput::make('footer_content.email')->label('Email'),
                 TextInput::make('footer_content.copyright')->label('版權文字'),
+                TextInput::make('footer_content.opening_hours')->label('營業時間 (Schema)')
+                    ->placeholder('Mo-Fr 09:00-18:00, Sa 09:00-12:00')
+                    ->helperText('Schema.org 格式，多組用逗號分隔'),
+                TextInput::make('footer_content.latitude')->label('緯度')->numeric()->placeholder('25.0330'),
+                TextInput::make('footer_content.longitude')->label('經度')->numeric()->placeholder('121.5654'),
+                TextInput::make('footer_content.area_served')->label('服務區域')
+                    ->placeholder('台中市, 新北市, 桃園市')
+                    ->helperText('逗號分隔'),
                 TextInput::make('social_links.facebook')->label('Facebook'),
                 TextInput::make('social_links.instagram')->label('Instagram'),
                 TextInput::make('social_links.line')->label('LINE'),

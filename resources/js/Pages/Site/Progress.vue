@@ -2,7 +2,9 @@
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import SiteLayout from '@/Layouts/SiteLayout.vue';
+import FaqSection from '@/Components/FaqSection.vue';
 import { useMedia } from '@/composables/useMedia';
+import { useSeo } from '@/composables/useSeo';
 
 const { mediaUrl } = useMedia();
 
@@ -11,12 +13,24 @@ const props = defineProps({
     navigation: Object,
     routeMap: Object,
     isPreview: Boolean,
+    metaDescription: String,
     page: Object,
     projects: Array,
     isAuthenticated: Boolean,
     selectedProject: Object,
     updates: Array,
     albums: Array,
+});
+
+const { seo } = useSeo({
+    title: props.page?.seo_title || props.page?.title || '工程進度',
+    description: props.metaDescription || props.page?.seo_description || props.page?.summary || '',
+    image: props.page?.cover_image_path,
+    breadcrumbs: [
+        { name: '首頁', url: '/' },
+        { name: '工程進度' },
+    ],
+    faqItems: props.page?.faq_items,
 });
 
 /* 閘門表單 */
@@ -49,7 +63,7 @@ function formatYear(dateStr) {
 </script>
 
 <template>
-    <SiteLayout :title="page?.title || '工程進度'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
+    <SiteLayout :title="page?.title || '工程進度'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
 
         <!-- ===== 閘門：未驗證時顯示 ===== -->
         <template v-if="!isAuthenticated">
@@ -177,5 +191,6 @@ function formatYear(dateStr) {
             </section>
         </template>
 
+        <FaqSection v-if="page?.faq_items?.length" :items="page.faq_items" />
     </SiteLayout>
 </template>

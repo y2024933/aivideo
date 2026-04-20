@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import SiteLayout from '@/Layouts/SiteLayout.vue';
 import { useMedia } from '@/composables/useMedia';
+import { useSeo } from '@/composables/useSeo';
 
 const { mediaUrl } = useMedia();
 
@@ -11,6 +12,16 @@ const props = defineProps({
     routeMap: Object,
     isPreview: Boolean,
     album: Object,
+});
+
+const { seo } = useSeo({
+    title: `工程相簿 — ${props.album.project?.name || ''}`,
+    description: props.album.description || '',
+    breadcrumbs: [
+        { name: '首頁', url: '/' },
+        { name: '工程進度', url: '/progress' },
+        { name: '工程相簿' },
+    ],
 });
 
 /* Lightbox */
@@ -53,7 +64,7 @@ function formatDate(dateStr) {
 </script>
 
 <template>
-    <SiteLayout :title="`\u5DE5\u7A0B\u76F8\u7C3F \u2014 ${formatDate(album.reported_at)}`" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
+    <SiteLayout :title="`\u5DE5\u7A0B\u76F8\u7C3F \u2014 ${formatDate(album.reported_at)}`" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
 
         <section class="bg-[#3a3232] min-h-screen px-6 py-20">
             <div class="mx-auto max-w-6xl">

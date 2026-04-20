@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\OptimizesImages;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,9 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Project extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, OptimizesImages;
+
+    public function imageFields(): array { return ['featured_image_path']; }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -37,6 +40,7 @@ class Project extends Model
         'floors',
         'layout_plan',
         'featured_image_path',
+        'featured_image_alt',
         'is_featured',
         'sort_order',
         'progress_password',

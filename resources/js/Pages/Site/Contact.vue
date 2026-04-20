@@ -1,16 +1,30 @@
 <script setup>
 import SiteLayout from '@/Layouts/SiteLayout.vue';
+import FaqSection from '@/Components/FaqSection.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { useSeo } from '@/composables/useSeo';
 
 const props = defineProps({
     site: Object,
     navigation: Object,
     routeMap: Object,
     isPreview: Boolean,
+    metaDescription: String,
     page: Object,
     projects: Array,
     inquiryTypes: Array,
+});
+
+const { seo } = useSeo({
+    title: props.page?.seo_title || props.page?.title || '聯絡我們',
+    description: props.metaDescription || props.page?.seo_description || props.page?.summary || '',
+    image: props.page?.cover_image_path,
+    breadcrumbs: [
+        { name: '首頁', url: '/' },
+        { name: '聯絡我們' },
+    ],
+    faqItems: props.page?.faq_items,
 });
 
 const flash = usePage().props.flash;
@@ -45,7 +59,7 @@ function submit() {
 </script>
 
 <template>
-    <SiteLayout :title="page?.title || '聯絡我們'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
+    <SiteLayout :title="page?.title || '聯絡我們'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
         <section class="mx-auto max-w-7xl px-6 py-20">
             <h1 class="text-5xl font-semibold">{{ page?.title || '聯絡我們' }}</h1>
 
@@ -113,5 +127,7 @@ function submit() {
                 </div>
             </div>
         </section>
+
+        <FaqSection v-if="page?.faq_items?.length" :items="page.faq_items" />
     </SiteLayout>
 </template>

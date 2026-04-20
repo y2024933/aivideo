@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Traits\OptimizesImages;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+
 class Site extends Model
 {
-    use HasFactory;
+    use HasFactory, OptimizesImages;
+
+    public function imageFields(): array { return ['logo_path', 'favicon_path']; }
 
     protected $fillable = [
         'slug',
@@ -16,6 +20,7 @@ class Site extends Model
         'brand_name',
         'theme_key',
         'logo_path',
+        'logo_alt',
         'favicon_path',
         'is_active',
         'homepage_sections',

@@ -12,6 +12,7 @@ use App\Models\Site;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +24,7 @@ class SiteController extends Controller
 
         return Inertia::render('Site/Home', [
             ...$this->sharedProps($request, $site),
+            'metaDescription' => $this->metaDescription($site->seo_defaults['description'] ?? null, null),
             'aboutPage' => $this->findPage($site, 'about'),
             'projectsPage' => $this->findPage($site, 'projects'),
             'newsPage' => $this->findPage($site, 'news'),
@@ -51,19 +53,24 @@ class SiteController extends Controller
     {
         $site = $this->resolveSite($request);
 
+        $page = $this->findPage($site, 'about');
+
         return Inertia::render('Site/About', [
             ...$this->sharedProps($request, $site),
-            'page' => $this->findPage($site, 'about'),
+            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary, $page?->content),
+            'page' => $page,
         ]);
     }
 
     public function projects(Request $request): Response
     {
         $site = $this->resolveSite($request);
+        $page = $this->findPage($site, 'projects');
 
         return Inertia::render('Site/Projects/Index', [
             ...$this->sharedProps($request, $site),
-            'page' => $this->findPage($site, 'projects'),
+            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
+            'page' => $page,
             'projects' => $this->projectsQuery($site)
                 ->orderByDesc('is_featured')
                 ->orderByDesc('launch_year')
@@ -84,6 +91,7 @@ class SiteController extends Controller
 
         return Inertia::render('Site/Projects/Show', [
             ...$this->sharedProps($request, $site),
+            'metaDescription' => $this->metaDescription(null, $project->summary),
             'project' => $project,
             'progressUpdates' => $project->progressUpdates()
                 ->where('is_published', true)
@@ -103,6 +111,7 @@ class SiteController extends Controller
         $site = $this->resolveSite($request);
         $activeCategory = $request->integer('category') ?: null;
         $query = $this->newsQuery($site);
+        $page = $this->findPage($site, 'news');
 
         $categories = $site->newsCategories()->orderBy('sort_order')->get(['id', 'name']);
 
@@ -112,7 +121,8 @@ class SiteController extends Controller
 
         return Inertia::render('Site/News/Index', [
             ...$this->sharedProps($request, $site),
-            'page' => $this->findPage($site, 'news'),
+            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
+            'page' => $page,
             'articles' => $query->paginate(12)->withQueryString(),
             'categories' => $categories,
             'activeCategory' => $activeCategory,
@@ -131,6 +141,7 @@ class SiteController extends Controller
 
         return Inertia::render('Site/News/Show', [
             ...$this->sharedProps($request, $site),
+            'metaDescription' => $this->metaDescription(null, $article->summary, $article->content),
             'article' => $article,
             'relatedArticles' => $this->newsQuery($site)
                 ->where('id', '!=', $article->id)
@@ -143,10 +154,12 @@ class SiteController extends Controller
     {
         $site = $this->resolveSite($request);
         $serviceCards = $site->service_content['cards'] ?? [];
+        $page = $this->findPage($site, 'services');
 
         return Inertia::render('Site/Services', [
             ...$this->sharedProps($request, $site),
-            'page' => $this->findPage($site, 'services'),
+            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
+            'page' => $page,
             'serviceHighlights' => filled($serviceCards) ? $serviceCards : [
                 [
                     'title' => '代租代管',
@@ -191,9 +204,12 @@ class SiteController extends Controller
             }
         }
 
+        $page = $this->findPage($site, 'progress');
+
         return Inertia::render('Site/Progress', [
             ...$this->sharedProps($request, $site),
-            'page' => $this->findPage($site, 'progress'),
+            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
+            'page' => $page,
             'projects' => $this->projectsQuery($site)->get(['id', 'name', 'slug']),
             'isAuthenticated' => (bool) $project,
             'selectedProject' => $project,
@@ -252,10 +268,12 @@ class SiteController extends Controller
     {
         $site = $this->resolveSite($request);
         $inquiryTypes = $site->contact_content['inquiry_types'] ?? [];
+        $page = $this->findPage($site, 'contact');
 
         return Inertia::render('Site/Contact', [
             ...$this->sharedProps($request, $site),
-            'page' => $this->findPage($site, 'contact'),
+            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
+            'page' => $page,
             'projects' => $this->projectsQuery($site)
                 ->orderByDesc('is_featured')
                 ->orderBy('sort_order')
@@ -316,6 +334,8 @@ class SiteController extends Controller
     {
         return [
             'site' => $site,
+            'currentUrl' => $request->fullUrl(),
+            'baseUrl' => rtrim($request->schemeAndHttpHost(), '/'),
             'navigation' => $this->navigationFor($request, $site),
             'routeMap' => [
                 'home' => $this->routeFor($request, $site, 'home'),
@@ -330,6 +350,7 @@ class SiteController extends Controller
                 'login' => route('login'),
                 'preview' => route('site.preview', $site),
             ],
+            'canonicalUrl' => $this->canonicalUrl($request, $site),
             'isPreview' => $this->isPreview($request),
         ];
     }
@@ -397,6 +418,26 @@ class SiteController extends Controller
         $base = $this->isPreview($request) ? ['site' => $site] : [];
 
         return route($name, [...$base, ...$parameters]);
+    }
+
+    protected function canonicalUrl(Request $request, Site $site): string
+    {
+        if ($this->isPreview($request)) {
+            $primaryDomain = $site->domains()->first()?->domain;
+            if ($primaryDomain) {
+                $path = str_replace('/preview/' . $site->slug, '', $request->getPathInfo());
+                return $request->getScheme() . '://' . $primaryDomain . ($path ?: '/');
+            }
+        }
+        return $request->url();
+    }
+
+    protected function metaDescription(?string $seoDescription, ?string $summary, ?string $content = null): string
+    {
+        if (filled($seoDescription)) return $seoDescription;
+        if (filled($summary)) return Str::limit(strip_tags($summary), 160);
+        if (filled($content)) return Str::limit(strip_tags($content), 160);
+        return '';
     }
 
     protected function resolveSite(Request $request): Site

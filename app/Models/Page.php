@@ -3,13 +3,16 @@
 namespace App\Models;
 
 use App\Traits\CleansTrixContent;
+use App\Traits\OptimizesImages;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Page extends Model
 {
-    use HasFactory, CleansTrixContent;
+    use HasFactory, CleansTrixContent, OptimizesImages;
+
+    public function imageFields(): array { return ['cover_image_path']; }
 
     protected function trixFields(): array { return ['content']; }
 
@@ -21,7 +24,9 @@ class Page extends Model
         'layout_key',
         'summary',
         'content',
+        'faq_items',
         'cover_image_path',
+        'cover_image_alt',
         'gallery',
         'seo_title',
         'seo_description',
@@ -33,6 +38,7 @@ class Page extends Model
     ];
 
     protected $casts = [
+        'faq_items' => 'array',
         'gallery' => 'array',
         'is_published' => 'boolean',
         'published_at' => 'datetime',

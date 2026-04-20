@@ -11,6 +11,7 @@ const props = defineProps({
     navigation: { type: Object, default: () => ({ primary: [], secondary: [], footer: [] }) },
     routeMap: { type: Object, required: true },
     isPreview: { type: Boolean, default: false },
+    seo: { type: Object, default: null },
 });
 
 const isEditorial = computed(() => props.site.theme_key === 'builder-editorial');
@@ -92,6 +93,22 @@ onMounted(() => {
 <template>
     <Head :title="title">
         <link v-if="site.favicon_path" rel="icon" :href="mediaUrl(site.favicon_path)" />
+        <link rel="canonical" :href="$page.props.canonicalUrl" />
+        <meta v-if="isPreview" name="robots" content="noindex, nofollow" />
+        <template v-if="seo">
+            <meta head-key="description" name="description" :content="seo.meta.description" />
+            <meta head-key="og:title" property="og:title" :content="seo.meta.title" />
+            <meta head-key="og:description" property="og:description" :content="seo.meta.description" />
+            <meta head-key="og:image" property="og:image" :content="seo.meta.image" />
+            <meta head-key="og:url" property="og:url" :content="seo.meta.url" />
+            <meta head-key="og:type" property="og:type" :content="seo.meta.type" />
+            <meta head-key="og:site_name" property="og:site_name" :content="seo.meta.siteName" />
+            <meta head-key="twitter:card" name="twitter:card" content="summary_large_image" />
+            <meta head-key="twitter:title" name="twitter:title" :content="seo.meta.title" />
+            <meta head-key="twitter:description" name="twitter:description" :content="seo.meta.description" />
+            <meta head-key="twitter:image" name="twitter:image" :content="seo.meta.image" />
+            <component is="script" head-key="json-ld" type="application/ld+json" v-text="seo.jsonLdScript" />
+        </template>
     </Head>
 
     <div
@@ -107,7 +124,7 @@ onMounted(() => {
             <div class="mx-auto max-w-7xl px-6 py-5">
                 <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div class="flex items-center gap-4">
-                        <img v-if="site.logo_path" :src="mediaUrl(site.logo_path)" :alt="site.name" class="h-14 w-14 rounded-full object-cover" />
+                        <img v-if="site.logo_path" :src="mediaUrl(site.logo_path)" :alt="site.logo_alt || site.name" class="h-14 w-14 rounded-full object-cover" />
                         <div>
                             <div class="flex items-center gap-3">
                                 <p class="text-xs uppercase tracking-[0.35em] text-stone-500">{{ site.brand_name || site.name }}</p>

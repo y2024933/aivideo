@@ -71,6 +71,7 @@ class NewsArticleResource extends Resource
                 ->image()
                 ->imageEditor()
                 ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
+            TextInput::make('featured_image_alt')->label('圖片 Alt Text')->helperText('描述圖片內容，有助 SEO 與無障礙')->maxLength(255),
             DateTimePicker::make('published_at')->label('發布時間'),
             Toggle::make('is_published')->label('上架')->default(true),
         ]);

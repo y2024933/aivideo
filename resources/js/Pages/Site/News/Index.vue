@@ -2,7 +2,9 @@
 import { computed, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import SiteLayout from '@/Layouts/SiteLayout.vue';
+import FaqSection from '@/Components/FaqSection.vue';
 import { useMedia } from '@/composables/useMedia';
+import { useSeo } from '@/composables/useSeo';
 
 const { mediaUrl } = useMedia();
 
@@ -11,10 +13,22 @@ const props = defineProps({
     navigation: Object,
     routeMap: Object,
     isPreview: Boolean,
+    metaDescription: String,
     page: Object,
     articles: Object,
     categories: { type: Array, default: () => [] },
     activeCategory: { type: Number, default: null },
+});
+
+const { seo } = useSeo({
+    title: props.page?.seo_title || props.page?.title || '最新消息',
+    description: props.metaDescription || props.page?.seo_description || props.page?.summary || '',
+    image: props.page?.cover_image_path,
+    breadcrumbs: [
+        { name: '首頁', url: '/' },
+        { name: '最新消息', url: '/news' },
+    ],
+    faqItems: props.page?.faq_items,
 });
 
 const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
@@ -28,7 +42,7 @@ function filterByCategory(categoryId) {
 </script>
 
 <template>
-    <SiteLayout :title="page?.title || '最新消息'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
+    <SiteLayout :title="page?.title || '最新消息'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
         <section class="mx-auto max-w-7xl px-6 py-20">
             <h1 class="text-5xl font-semibold">{{ page?.title || '最新消息' }}</h1>
             <p class="mt-8 max-w-3xl text-lg leading-8 text-stone-600">
@@ -110,5 +124,7 @@ function filterByCategory(categoryId) {
                 </template>
             </nav>
         </section>
+
+        <FaqSection v-if="page?.faq_items?.length" :items="page.faq_items" />
     </SiteLayout>
 </template>

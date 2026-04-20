@@ -6,6 +6,7 @@ use App\Filament\Resources\PageResource\Pages;
 use App\Models\Page;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use FilamentTiptapEditor\TiptapEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -97,6 +98,7 @@ class PageResource extends Resource
                 ->image()
                 ->imageEditor()
                 ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
+            TextInput::make('cover_image_alt')->label('封面圖 Alt Text')->helperText('描述圖片內容，有助 SEO 與無障礙')->maxLength(255),
             FileUpload::make('gallery')
                 ->label('頁面圖庫')
                 ->disk('public')
@@ -113,6 +115,14 @@ class PageResource extends Resource
             Textarea::make('seo_description')
                 ->label('SEO 描述')
                 ->rows(3),
+            Repeater::make('faq_items')
+                ->label('FAQ 問答')
+                ->schema([
+                    TextInput::make('question')->label('問題')->required(),
+                    Textarea::make('answer')->label('回答')->required()->rows(3),
+                ])
+                ->collapsible()
+                ->columnSpanFull(),
             TextInput::make('sort_order')
                 ->label('排序')
                 ->numeric()
