@@ -29,7 +29,7 @@ class NewsArticle extends Model
         'site_id',
         'title',
         'slug',
-        'category',
+        'news_category_id',
         'summary',
         'content',
         'featured_image_path',
@@ -48,5 +48,10 @@ class NewsArticle extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    public function newsCategory(): BelongsTo
+    {
+        return $this->belongsTo(NewsCategory::class);
     }
 }

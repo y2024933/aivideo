@@ -57,7 +57,6 @@ function submit() {
                 <!-- 左：文案 -->
                 <div class="flex flex-col justify-center">
                     <div v-if="page?.content" class="prose prose-stone max-w-none text-[15px] leading-8 text-stone-500 [&_p:empty]:min-h-[1em]" v-html="page.content"></div>
-                    <p v-else class="whitespace-pre-line text-[15px] leading-8 text-stone-500">讓家的溫度從這一刻的交流開始。</p>
                 </div>
 
                 <!-- 右：表單 -->

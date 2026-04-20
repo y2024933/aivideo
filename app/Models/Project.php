@@ -27,7 +27,7 @@ class Project extends Model
         'site_id',
         'name',
         'slug',
-        'status',
+        'project_status_id',
         'location',
         'address',
         'launch_year',
@@ -51,6 +51,11 @@ class Project extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    public function projectStatus(): BelongsTo
+    {
+        return $this->belongsTo(ProjectStatus::class);
     }
 
     public function progressUpdates(): HasMany

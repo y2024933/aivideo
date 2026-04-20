@@ -33,6 +33,8 @@ class NewsArticleResource extends Resource
 
     protected static ?string $navigationGroup = '網站內容';
 
+    protected static ?int $navigationSort = 3;
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -41,10 +43,21 @@ class NewsArticleResource extends Resource
                 ->relationship('site', 'name')
                 ->required()
                 ->visible(fn () => auth()->user()?->isSuperAdmin())
-                ->default(fn () => auth()->user()?->sites()->value('sites.id')),
+                ->default(fn () => auth()->user()?->sites()->value('sites.id'))
+                ->reactive()
+                ->afterStateUpdated(fn (callable $set) => $set('news_category_id', null)),
             TextInput::make('title')->label('標題')->required()->maxLength(255),
             TextInput::make('slug')->label('頁面代碼')->required()->alphaDash(),
-            TextInput::make('category')->label('分類')->maxLength(255),
+            Select::make('news_category_id')
+                ->label('分類')
+                ->options(function (callable $get) {
+                    $siteId = $get('site_id') ?? auth()->user()?->sites()->value('sites.id');
+                    if (! $siteId) return [];
+                    return \App\Models\NewsCategory::where('site_id', $siteId)
+                        ->orderBy('sort_order')
+                        ->pluck('name', 'id')
+                        ->all();
+                }),
             Textarea::make('summary')->label('摘要')->rows(3),
             TiptapEditor::make('content')
                 ->label('內容')
@@ -67,24 +80,25 @@ class NewsArticleResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('site.name')->label('網站')->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
+                TextColumn::make('site.name')->label('網站')->searchable(auth()->user()?->isSuperAdmin() ?? false)->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
                 TextColumn::make('title')->label('標題')->searchable()->sortable(),
-                TextColumn::make('category')->label('分類'),
+                TextColumn::make('newsCategory.name')->label('分類'),
                 TextColumn::make('published_at')->label('發布時間')->dateTime('Y-m-d H:i'),
                 TextColumn::make('updated_at')->label('最後更新')->since(),
                 IconColumn::make('is_published')->label('上架')->boolean(),
             ])
             ->actions([
+                Tables\Actions\Action::make('preview')
+                    ->label('預覽')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->url(fn (\App\Models\NewsArticle $record): string => '/preview/' . $record->site?->slug . '/news/' . $record->slug)
+                    ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('category')
+                Tables\Filters\SelectFilter::make('news_category_id')
                     ->label('分類')
-                    ->options(fn () => \App\Models\NewsArticle::query()
-                        ->distinct()
-                        ->whereNotNull('category')
-                        ->pluck('category', 'category')
-                        ->toArray()),
+                    ->relationship('newsCategory', 'name'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

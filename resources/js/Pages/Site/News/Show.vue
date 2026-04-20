@@ -18,7 +18,7 @@ defineProps({
     <SiteLayout :title="article.title" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview">
         <section class="mx-auto max-w-5xl px-6 py-20">
             <a :href="routeMap.news" class="text-sm transition hover:text-[var(--site-primary)]">返回最新消息</a>
-            <p class="mt-8 text-xs uppercase tracking-[0.3em] text-[var(--site-primary)]">{{ article.category || '最新消息' }}</p>
+            <p class="mt-8 text-xs uppercase tracking-[0.3em] text-[var(--site-primary)]">{{ article.news_category?.name || '最新消息' }}</p>
             <h1 class="mt-4 text-5xl font-semibold">{{ article.title }}</h1>
             <p class="mt-6 text-lg leading-8 text-stone-600">{{ article.summary }}</p>
             <img v-if="article.featured_image_path" :src="mediaUrl(article.featured_image_path)" :alt="article.title" class="mt-10 mb-8 w-full rounded-lg object-cover max-h-[400px]" />

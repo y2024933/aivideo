@@ -146,7 +146,7 @@ return [
 
     'select' => [
         'actions' => [
-            'create_option' => ['label' => '建立', 'modal' => ['heading' => '建立', 'actions' => ['create' => ['label' => '建立'], 'create_another' => ['label' => '建立並繼續新增']]]],
+            'create_option' => ['label' => '新增', 'modal' => ['heading' => '新增', 'actions' => ['create' => ['label' => '新增'], 'create_another' => ['label' => '建立並繼續新增']]]],
             'edit_option' => ['label' => '編輯', 'modal' => ['heading' => '編輯', 'actions' => ['save' => ['label' => '儲存']]]],
         ],
         'boolean' => ['true' => '是', 'false' => '否'],

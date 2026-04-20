@@ -5,12 +5,13 @@ namespace Database\Seeders;
 use App\Models\ContactMessage;
 use App\Models\NavigationItem;
 use App\Models\NewsArticle;
+use App\Models\NewsCategory;
 use App\Models\Page;
 use App\Models\ProgressUpdate;
 use App\Models\Project;
+use App\Models\ProjectStatus;
 use App\Models\Site;
 use App\Models\SiteDomain;
-use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -35,10 +36,11 @@ class RoleAndDemoDataSeeder extends Seeder
             NavigationItem::where('site_id', $oldSite->id)->delete();
             Page::where('site_id', $oldSite->id)->delete();
             Project::where('site_id', $oldSite->id)->delete();
+            ProjectStatus::where('site_id', $oldSite->id)->delete();
+            NewsCategory::where('site_id', $oldSite->id)->delete();
             NewsArticle::where('site_id', $oldSite->id)->delete();
             ProgressUpdate::where('site_id', $oldSite->id)->delete();
             ContactMessage::where('site_id', $oldSite->id)->delete();
-            SiteSetting::where('site_id', $oldSite->id)->delete();
             SiteDomain::where('site_id', $oldSite->id)->delete();
             $oldSite->users()->detach();
             $oldSite->delete();
@@ -53,47 +55,7 @@ class RoleAndDemoDataSeeder extends Seeder
                 'name' => '大宅威建設',
                 'brand_name' => '金州開發建設',
                 'theme_key' => 'builder-classic',
-                'primary_color' => '#2c3e50',
-                'secondary_color' => '#c0965c',
-                'contact_email' => 'service@dzw.com.tw',
-                'contact_phone' => '04-8955531',
                 'is_active' => true,
-            ]
-        );
-
-        SiteDomain::updateOrCreate(
-            ['domain' => 'dzw.local'],
-            ['site_id' => $siteA->id]
-        );
-
-        // =====================================================================
-        // 站 B：泉宇建設（editorial theme）
-        // =====================================================================
-        $siteB = Site::updateOrCreate(
-            ['slug' => 'chyuan-yeu'],
-            [
-                'name' => '泉宇建設',
-                'brand_name' => 'CHYUAN YEU',
-                'theme_key' => 'builder-editorial',
-                'primary_color' => '#184c61',
-                'secondary_color' => '#b59a6a',
-                'contact_email' => 'service@chyuan-yeu.tw',
-                'contact_phone' => '04-2259-6826',
-                'is_active' => true,
-            ]
-        );
-
-        SiteDomain::updateOrCreate(
-            ['domain' => 'chyuanyeu.local'],
-            ['site_id' => $siteB->id]
-        );
-
-        // =====================================================================
-        // 站 A SiteSetting
-        // =====================================================================
-        SiteSetting::updateOrCreate(
-            ['site_id' => $siteA->id],
-            [
                 'homepage_sections' => ['hero', 'projects', 'news', 'contact'],
                 'hero_content' => [
                     'eyebrow' => '大宅威建設・金州開發建設',
@@ -153,12 +115,41 @@ class RoleAndDemoDataSeeder extends Seeder
             ]
         );
 
+        SiteDomain::updateOrCreate(
+            ['domain' => 'dzw.local'],
+            ['site_id' => $siteA->id]
+        );
+
+        // 站 A 作品類型
+        $siteAStatusSelling = ProjectStatus::updateOrCreate(
+            ['site_id' => $siteA->id, 'slug' => 'selling'],
+            ['name' => '熱銷新案', 'sort_order' => 1]
+        );
+        $siteAStatusCompleted = ProjectStatus::updateOrCreate(
+            ['site_id' => $siteA->id, 'slug' => 'completed'],
+            ['name' => '歷史建案', 'sort_order' => 2]
+        );
+
+        // 站 A 消息分類
+        $siteANewsCat1 = NewsCategory::updateOrCreate(
+            ['site_id' => $siteA->id, 'slug' => 'news-update'],
+            ['name' => '新訊動態', 'sort_order' => 1]
+        );
+        $siteANewsCat2 = NewsCategory::updateOrCreate(
+            ['site_id' => $siteA->id, 'slug' => 'construction'],
+            ['name' => '工程進度', 'sort_order' => 2]
+        );
+
         // =====================================================================
-        // 站 B SiteSetting（泉宇建設完整設定）
+        // 站 B：泉宇建設（editorial theme）
         // =====================================================================
-        SiteSetting::updateOrCreate(
-            ['site_id' => $siteB->id],
+        $siteB = Site::updateOrCreate(
+            ['slug' => 'chyuan-yeu'],
             [
+                'name' => '泉宇建設',
+                'brand_name' => 'CHYUAN YEU',
+                'theme_key' => 'builder-editorial',
+                'is_active' => true,
                 'homepage_sections' => ['hero', 'about', 'services', 'projects', 'news', 'progress', 'contact'],
                 'hero_content' => [
                     'eyebrow' => '泉宇建設 CHYUAN YEU',
@@ -234,6 +225,39 @@ class RoleAndDemoDataSeeder extends Seeder
                     'copyright' => 'Copyright © 泉宇建設',
                 ],
             ]
+        );
+
+        SiteDomain::updateOrCreate(
+            ['domain' => 'chyuanyeu.local'],
+            ['site_id' => $siteB->id]
+        );
+
+        // 站 B 作品類型
+        $siteBStatusSelling = ProjectStatus::updateOrCreate(
+            ['site_id' => $siteB->id, 'slug' => 'selling'],
+            ['name' => '熱銷新案', 'sort_order' => 1]
+        );
+        $siteBStatusCompleted = ProjectStatus::updateOrCreate(
+            ['site_id' => $siteB->id, 'slug' => 'completed'],
+            ['name' => '歷史建案', 'sort_order' => 2]
+        );
+        $siteBStatusPlanning = ProjectStatus::updateOrCreate(
+            ['site_id' => $siteB->id, 'slug' => 'planning'],
+            ['name' => '規劃中', 'sort_order' => 3]
+        );
+
+        // 站 B 消息分類
+        $siteBNewsCat1 = NewsCategory::updateOrCreate(
+            ['site_id' => $siteB->id, 'slug' => 'company-news'],
+            ['name' => '公司新訊', 'sort_order' => 1]
+        );
+        $siteBNewsCat2 = NewsCategory::updateOrCreate(
+            ['site_id' => $siteB->id, 'slug' => 'event'],
+            ['name' => '活動紀錄', 'sort_order' => 2]
+        );
+        $siteBNewsCat3 = NewsCategory::updateOrCreate(
+            ['site_id' => $siteB->id, 'slug' => 'brand-sharing'],
+            ['name' => '品牌分享', 'sort_order' => 3]
         );
 
         // =====================================================================
@@ -369,8 +393,8 @@ class RoleAndDemoDataSeeder extends Seeder
         );
 
         foreach ([
-            ['label' => '熱銷新案', 'url' => '/projects?status=selling', 'sort_order' => 1],
-            ['label' => '歷史建案', 'url' => '/projects?status=completed', 'sort_order' => 2],
+            ['label' => '熱銷新案', 'url' => "/projects?status={$siteAStatusSelling->id}", 'sort_order' => 1],
+            ['label' => '歷史建案', 'url' => "/projects?status={$siteAStatusCompleted->id}", 'sort_order' => 2],
         ] as $item) {
             NavigationItem::updateOrCreate(
                 ['site_id' => $siteA->id, 'parent_id' => $projectsParentA->id, 'label' => $item['label']],
@@ -450,7 +474,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteA->id, 'slug' => 'tianxia-yipin-7'],
             array_merge($dzwProjectDefaults, [
                 'name' => '天下一品7',
-                'status' => 'selling',
+                'project_status_id' => $siteAStatusSelling->id,
                 'project_category' => 'residential',
                 'location' => '彰化',
                 'address' => '彰化縣二林鎮',
@@ -471,7 +495,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteA->id, 'slug' => 'wenhua-chuanjia-2'],
             array_merge($dzwProjectDefaults, [
                 'name' => '文化傳家2',
-                'status' => 'selling',
+                'project_status_id' => $siteAStatusSelling->id,
                 'project_category' => 'residential',
                 'location' => '彰化',
                 'address' => '彰化縣二林鎮',
@@ -503,7 +527,7 @@ class RoleAndDemoDataSeeder extends Seeder
                 ['site_id' => $siteA->id, 'slug' => $p['slug']],
                 array_merge($dzwProjectDefaults, [
                     'name' => $p['name'],
-                    'status' => 'completed',
+                    'project_status_id' => $siteAStatusCompleted->id,
                     'project_category' => $p['category'],
                     'location' => '彰化',
                     'address' => '彰化縣二林鎮',
@@ -528,7 +552,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteA->id, 'slug' => 'tianxia7-launch'],
             [
                 'title' => '天下一品7 正式公開',
-                'category' => '新訊動態',
+                'news_category_id' => $siteANewsCat1->id,
                 'summary' => '天下一品系列第七代作品正式亮相，歡迎蒞臨現場了解。',
                 'content' => '<p>天下一品7 延續品牌經典，以文化傳家為核心理念，現場提供基地模型、建材展示與專人導覽。</p>',
                 'published_at' => now()->subDays(3),
@@ -543,7 +567,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteA->id, 'slug' => 'wenhua2-progress'],
             [
                 'title' => '文化傳家2 工程穩步推進',
-                'category' => '工程進度',
+                'news_category_id' => $siteANewsCat2->id,
                 'summary' => '文化傳家2 主體結構工程順利進行，預計如期交付。',
                 'content' => '<p>文化傳家2 主體結構持續推進，各樓層施工按期完成，品質控管嚴格落實。</p>',
                 'published_at' => now()->subDays(10),
@@ -558,7 +582,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteA->id, 'slug' => 'dzw-brand-story'],
             [
                 'title' => '大宅威建設品牌故事',
-                'category' => '新訊動態',
+                'news_category_id' => $siteANewsCat1->id,
                 'summary' => '深耕彰化在地住宅建設，以文化為本、品質至上的經營信念。',
                 'content' => '<p>大宅威建設與金州開發建設，秉持文化傳家精神，持續在彰化打造高品質住宅。</p>',
                 'published_at' => now()->subDays(25),
@@ -573,7 +597,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteA->id, 'slug' => 'tianxia6-completion'],
             [
                 'title' => '天下一品6 圓滿完工',
-                'category' => '工程進度',
+                'news_category_id' => $siteANewsCat2->id,
                 'summary' => '天下一品6 順利完工交付，感謝所有住戶的信任與支持。',
                 'content' => '<p>天下一品6 歷經嚴謹施工與品質把關，順利完工交付，為品牌再添經典之作。</p>',
                 'published_at' => now()->subDays(60),
@@ -765,8 +789,8 @@ class RoleAndDemoDataSeeder extends Seeder
         );
 
         foreach ([
-            ['label' => '熱銷新案', 'url' => '/projects?status=selling', 'sort_order' => 1],
-            ['label' => '歷史建案', 'url' => '/projects?status=completed', 'sort_order' => 2],
+            ['label' => '熱銷新案', 'url' => "/projects?status={$siteBStatusSelling->id}", 'sort_order' => 1],
+            ['label' => '歷史建案', 'url' => "/projects?status={$siteBStatusCompleted->id}", 'sort_order' => 2],
         ] as $item) {
             NavigationItem::updateOrCreate(
                 ['site_id' => $siteB->id, 'parent_id' => $projectsParentB->id, 'label' => $item['label']],
@@ -786,7 +810,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['label' => '品牌故事', 'slug' => 'about', 'sort_order' => 2],
             ['label' => '泉宇新訊', 'slug' => 'news', 'sort_order' => 3],
             ['label' => '熱銷建案', 'slug' => 'projects', 'sort_order' => 4],
-            ['label' => '建築軌跡', 'slug' => 'projects', 'url_override' => '/projects?status=completed', 'sort_order' => 5],
+            ['label' => '建築軌跡', 'slug' => 'projects', 'url_override' => "/projects?status={$siteBStatusCompleted->id}", 'sort_order' => 5],
             ['label' => '工程進度', 'slug' => 'progress', 'sort_order' => 6],
             ['label' => '宇您有約', 'slug' => 'contact', 'sort_order' => 7],
         ];
@@ -817,7 +841,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteB->id, 'slug' => 'opera-residence'],
             array_merge($cyProjectDefaults, [
                 'name' => '泉宇雲鼎',
-                'status' => 'selling',
+                'project_status_id' => $siteBStatusSelling->id,
                 'project_category' => 'residential',
                 'location' => '台中歌劇院特區',
                 'address' => '台中市西屯區河南路二段與市政北七路口',
@@ -844,7 +868,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteB->id, 'slug' => 'green-courtyard'],
             array_merge($cyProjectDefaults, [
                 'name' => '泉宇謙和',
-                'status' => 'completed',
+                'project_status_id' => $siteBStatusCompleted->id,
                 'project_category' => 'villa',
                 'location' => '彰化員林核心區',
                 'address' => '彰化縣員林市三民東街 118 號旁',
@@ -871,7 +895,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteB->id, 'slug' => 'river-atelier'],
             array_merge($cyProjectDefaults, [
                 'name' => '泉宇川玥',
-                'status' => 'planning',
+                'project_status_id' => $siteBStatusPlanning->id,
                 'project_category' => 'mixed_use',
                 'location' => '彰化八卦山景觀軸',
                 'address' => '彰化市東民街與中山路景觀軸帶',
@@ -901,7 +925,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteB->id, 'slug' => 'new-launch'],
             [
                 'title' => '泉宇雲鼎・新案鉅獻',
-                'category' => '公司新訊',
+                'news_category_id' => $siteBNewsCat1->id,
                 'summary' => '新案資訊正式公開，現場提供基地模型、建材展示與專人導覽。',
                 'content' => '<p>新案資訊正式公開，現場提供基地模型、建材展示與專人導覽。</p>',
                 'published_at' => now()->subDays(5),
@@ -916,7 +940,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteB->id, 'slug' => 'community-walkthrough'],
             [
                 'title' => '開箱家配日，美好的生活群像',
-                'category' => '活動紀錄',
+                'news_category_id' => $siteBNewsCat2->id,
                 'summary' => '邀請住戶與團隊一起走入未來日常，體驗空間細節與動線安排。',
                 'content' => '<p>從公設導覽到家配提案，透過實際走訪與說明，讓客戶更具體理解空間配置與生活節奏。</p>',
                 'published_at' => now()->subDays(18),
@@ -931,7 +955,7 @@ class RoleAndDemoDataSeeder extends Seeder
             ['site_id' => $siteB->id, 'slug' => 'service-team-visit'],
             [
                 'title' => '大樓體浴室廠房參訪',
-                'category' => '品牌分享',
+                'news_category_id' => $siteBNewsCat3->id,
                 'summary' => '透過產地走訪了解材料與設備供應流程。',
                 'content' => '<p>透過產地走訪了解材料與設備供應流程，作為售後維護與產品把關的基礎。</p>',
                 'published_at' => now()->subDays(40),

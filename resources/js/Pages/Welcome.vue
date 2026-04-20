@@ -12,7 +12,7 @@ const props = defineProps({
 });
 
 const isEditorial = computed(() => props.site.theme_key === 'builder-editorial');
-const sections = computed(() => props.site.setting?.homepage_sections ?? ['hero', 'projects', 'news', 'progress', 'contact']);
+const sections = ['hero', 'projects', 'news', 'progress', 'contact'];
 
 function mediaUrl(path) {
     if (!path) {
@@ -27,7 +27,7 @@ function mediaUrl(path) {
 }
 
 const heroBackgroundStyle = computed(() => {
-    const image = props.site.setting?.hero_content?.background_image;
+    const image = props.site.hero_content?.background_image;
 
     if (!image) {
         return null;
@@ -41,13 +41,13 @@ const heroBackgroundStyle = computed(() => {
 });
 
 const accentStyle = computed(() => ({
-    '--site-primary': props.site.primary_color || (isEditorial.value ? '#8d5b34' : '#184c61'),
-    '--site-secondary': props.site.secondary_color || (isEditorial.value ? '#efe4d7' : '#b59a6a'),
+    '--site-primary': isEditorial.value ? '#8d5b34' : '#184c61',
+    '--site-secondary': isEditorial.value ? '#efe4d7' : '#b59a6a',
 }));
 </script>
 
 <template>
-    <Head :title="site.setting?.seo_defaults?.title || site.name" />
+    <Head :title="site.seo_defaults?.title || site.name" />
 
     <div class="min-h-screen" :class="isEditorial ? 'bg-[#f5efe8] text-stone-900' : 'bg-stone-950 text-stone-100'" :style="accentStyle">
         <header :class="isEditorial ? 'border-b border-stone-300 bg-white/80 backdrop-blur' : 'border-b border-white/10'"">
@@ -82,21 +82,21 @@ const accentStyle = computed(() => ({
                 <div class="mx-auto grid max-w-6xl gap-12 px-6 py-20 lg:grid-cols-[1.2fr_0.8fr]">
                     <div>
                         <p :class="isEditorial ? 'text-sm uppercase tracking-[0.35em] text-[var(--site-primary)]' : 'text-sm uppercase tracking-[0.35em] text-[var(--site-secondary)]'">
-                            {{ site.setting?.hero_content?.eyebrow || site.brand_name || site.name }}
+                            {{ site.hero_content?.eyebrow || site.brand_name || site.name }}
                         </p>
                         <h2 class="mt-6 max-w-3xl text-5xl font-semibold leading-tight" :class="isEditorial ? 'text-stone-900' : 'text-white'">
-                            {{ site.setting?.hero_content?.headline || '多網站共用後台的建設品牌平台' }}
+                            {{ site.hero_content?.headline || '多網站共用後台的建設品牌平台' }}
                         </h2>
                         <p class="mt-6 max-w-2xl text-lg leading-8" :class="isEditorial ? 'text-stone-600' : 'text-stone-300'">
-                            {{ site.setting?.hero_content?.subheadline }}
+                            {{ site.hero_content?.subheadline }}
                         </p>
                         <a
-                            v-if="site.setting?.hero_content?.cta_label"
-                            :href="site.setting?.hero_content?.cta_link || '#'"
+                            v-if="site.hero_content?.cta_label"
+                            :href="site.hero_content?.cta_link || '#'"
                             class="mt-8 inline-flex rounded-full px-5 py-3 text-sm font-medium transition"
                             :class="isEditorial ? 'bg-[var(--site-primary)] text-white hover:opacity-90' : 'bg-[var(--site-secondary)] text-stone-950 hover:opacity-90'"
                         >
-                            {{ site.setting?.hero_content?.cta_label }}
+                            {{ site.hero_content?.cta_label }}
                         </a>
                     </div>
                     <div
@@ -115,11 +115,11 @@ const accentStyle = computed(() => ({
                             </div>
                             <div class="flex justify-between gap-6 border-b pb-4" :class="isEditorial ? 'border-stone-200' : 'border-white/10'">
                                 <dt>聯絡信箱</dt>
-                                <dd>{{ site.contact_email || '-' }}</dd>
+                                <dd>{{ site.footer_content?.email || '-' }}</dd>
                             </div>
                             <div class="flex justify-between gap-6">
                                 <dt>聯絡電話</dt>
-                                <dd>{{ site.contact_phone || '-' }}</dd>
+                                <dd>{{ site.footer_content?.phone || '-' }}</dd>
                             </div>
                         </dl>
                     </div>
@@ -150,7 +150,7 @@ const accentStyle = computed(() => ({
                         />
                         <div class="p-6">
                             <p class="text-xs uppercase tracking-[0.3em]" :class="isEditorial ? 'text-[var(--site-primary)]' : 'text-[var(--site-secondary)]'">
-                                {{ project.status }}
+                                {{ project.project_status?.name }}
                             </p>
                             <h4 class="mt-4 text-2xl font-semibold" :class="isEditorial ? 'text-stone-900' : 'text-white'">{{ project.name }}</h4>
                             <p class="mt-3 text-sm" :class="isEditorial ? 'text-stone-600' : 'text-stone-400'">{{ project.summary }}</p>
@@ -227,15 +227,15 @@ const accentStyle = computed(() => ({
                     <div class="mt-8 grid gap-6 md:grid-cols-3">
                         <div class="rounded-2xl p-5" :class="isEditorial ? 'bg-white/80' : 'bg-white/5'">
                             <p class="text-sm" :class="isEditorial ? 'text-stone-500' : 'text-stone-400'">Email</p>
-                            <p class="mt-2 font-semibold">{{ site.contact_email || site.setting?.footer_content?.email || '-' }}</p>
+                            <p class="mt-2 font-semibold">{{ site.footer_content?.email || '-' }}</p>
                         </div>
                         <div class="rounded-2xl p-5" :class="isEditorial ? 'bg-white/80' : 'bg-white/5'">
                             <p class="text-sm" :class="isEditorial ? 'text-stone-500' : 'text-stone-400'">電話</p>
-                            <p class="mt-2 font-semibold">{{ site.contact_phone || site.setting?.footer_content?.phone || '-' }}</p>
+                            <p class="mt-2 font-semibold">{{ site.footer_content?.phone || '-' }}</p>
                         </div>
                         <div class="rounded-2xl p-5" :class="isEditorial ? 'bg-white/80' : 'bg-white/5'">
                             <p class="text-sm" :class="isEditorial ? 'text-stone-500' : 'text-stone-400'">地址</p>
-                            <p class="mt-2 font-semibold">{{ site.setting?.footer_content?.address || '-' }}</p>
+                            <p class="mt-2 font-semibold">{{ site.footer_content?.address || '-' }}</p>
                         </div>
                     </div>
                 </div>

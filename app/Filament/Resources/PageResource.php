@@ -38,6 +38,8 @@ class PageResource extends Resource
 
     protected static ?string $navigationGroup = '網站內容';
 
+    protected static ?int $navigationSort = 2;
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -52,7 +54,7 @@ class PageResource extends Resource
                 ->required()
                 ->maxLength(255),
             TextInput::make('slug')
-                ->label('Slug')
+                ->label('頁面代碼')
                 ->required()
                 ->alphaDash()
                 ->maxLength(255),
@@ -133,11 +135,17 @@ class PageResource extends Resource
                     ->label('頁面標題')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('page_type')
-                    ->label('類型')
+                TextColumn::make('slug')
+                    ->label('頁面代碼')
                     ->badge(),
                 TextColumn::make('layout_key')
                     ->label('版型')
+                    ->formatStateUsing(fn (?string $state) => match ($state) {
+                        'default' => '預設版型',
+                        'builder-classic' => '經典建設版型',
+                        'builder-editorial' => '編輯風格版型',
+                        default => $state ?? '-',
+                    })
                     ->toggleable(),
                 TextColumn::make('published_at')
                     ->label('發布時間')

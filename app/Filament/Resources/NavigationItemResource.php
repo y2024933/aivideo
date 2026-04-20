@@ -29,6 +29,8 @@ class NavigationItemResource extends Resource
 
     protected static ?string $navigationGroup = '網站內容';
 
+    protected static ?int $navigationSort = 1;
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isSuperAdmin() ?? false;
@@ -111,6 +113,7 @@ class NavigationItemResource extends Resource
         return $table->columns([
                 TextColumn::make('site.name')
                     ->label('網站')
+                    ->searchable(auth()->user()?->isSuperAdmin() ?? false)
                     ->toggleable(),
                 TextColumn::make('position')
                     ->label('位置')

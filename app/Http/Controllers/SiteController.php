@@ -23,7 +23,6 @@ class SiteController extends Controller
 
         return Inertia::render('Site/Home', [
             ...$this->sharedProps($request, $site),
-            'homePage' => $this->findPage($site, 'home'),
             'aboutPage' => $this->findPage($site, 'about'),
             'projectsPage' => $this->findPage($site, 'projects'),
             'newsPage' => $this->findPage($site, 'news'),
@@ -42,10 +41,9 @@ class SiteController extends Controller
                 ->limit(3)
                 ->get(),
             'classicProjects' => $this->projectsQuery($site)
-                ->where('status', 'completed')
+                ->whereHas('projectStatus', fn ($q) => $q->where('slug', 'completed'))
                 ->orderByDesc('launch_year')
                 ->get(),
-            'homepageSections' => $site->setting?->homepage_sections ?? [],
         ]);
     }
 
@@ -62,28 +60,23 @@ class SiteController extends Controller
     public function projects(Request $request): Response
     {
         $site = $this->resolveSite($request);
-        $activeStatus = $request->string('status')->toString();
-        $query = $this->projectsQuery($site);
-
-        if (filled($activeStatus)) {
-            $query->where('status', $activeStatus);
-        }
 
         return Inertia::render('Site/Projects/Index', [
             ...$this->sharedProps($request, $site),
             'page' => $this->findPage($site, 'projects'),
-            'projects' => $query
+            'projects' => $this->projectsQuery($site)
                 ->orderByDesc('is_featured')
                 ->orderByDesc('launch_year')
                 ->orderBy('sort_order')
                 ->get(),
-            'activeStatus' => $activeStatus,
+            'statusList' => $site->projectStatuses()->orderBy('sort_order')->get(['id', 'name']),
         ]);
     }
 
-    public function projectShow(Request $request, string $slug): Response
+    public function projectShow(Request $request): Response
     {
         $site = $this->resolveSite($request);
+        $slug = $request->route('slug');
         $project = Project::query()
             ->where('site_id', $site->id)
             ->where('slug', $slug)
@@ -108,34 +101,28 @@ class SiteController extends Controller
     public function news(Request $request): Response
     {
         $site = $this->resolveSite($request);
-        $activeCategory = $request->string('category')->toString();
+        $activeCategory = $request->integer('category') ?: null;
         $query = $this->newsQuery($site);
 
-        $categories = NewsArticle::query()
-            ->where('site_id', $site->id)
-            ->where('is_published', true)
-            ->distinct()
-            ->pluck('category')
-            ->filter()
-            ->values()
-            ->all();
+        $categories = $site->newsCategories()->orderBy('sort_order')->get(['id', 'name']);
 
-        if (filled($activeCategory)) {
-            $query->where('category', $activeCategory);
+        if ($activeCategory) {
+            $query->where('news_category_id', $activeCategory);
         }
 
         return Inertia::render('Site/News/Index', [
             ...$this->sharedProps($request, $site),
             'page' => $this->findPage($site, 'news'),
-            'articles' => $query->get(),
+            'articles' => $query->paginate(12)->withQueryString(),
             'categories' => $categories,
             'activeCategory' => $activeCategory,
         ]);
     }
 
-    public function newsShow(Request $request, string $slug): Response
+    public function newsShow(Request $request): Response
     {
         $site = $this->resolveSite($request);
+        $slug = $request->route('slug');
         $article = NewsArticle::query()
             ->where('site_id', $site->id)
             ->where('is_published', true)
@@ -155,7 +142,7 @@ class SiteController extends Controller
     public function services(Request $request): Response
     {
         $site = $this->resolveSite($request);
-        $serviceCards = $site->setting?->service_content['cards'] ?? [];
+        $serviceCards = $site->service_content['cards'] ?? [];
 
         return Inertia::render('Site/Services', [
             ...$this->sharedProps($request, $site),
@@ -241,9 +228,10 @@ class SiteController extends Controller
         return back();
     }
 
-    public function progressAlbum(Request $request, ProgressAlbum $album): Response
+    public function progressAlbum(Request $request): Response
     {
         $site = $this->resolveSite($request);
+        $album = ProgressAlbum::findOrFail($request->route('album'));
 
         // 驗證相簿屬於該站台且已發布
         abort_unless($album->site_id === $site->id && $album->is_published, 404);
@@ -263,7 +251,7 @@ class SiteController extends Controller
     public function contact(Request $request): Response
     {
         $site = $this->resolveSite($request);
-        $inquiryTypes = $site->setting?->contact_content['inquiry_types'] ?? [];
+        $inquiryTypes = $site->contact_content['inquiry_types'] ?? [];
 
         return Inertia::render('Site/Contact', [
             ...$this->sharedProps($request, $site),
@@ -326,8 +314,6 @@ class SiteController extends Controller
 
     protected function sharedProps(Request $request, Site $site): array
     {
-        $site->loadMissing('setting');
-
         return [
             'site' => $site,
             'navigation' => $this->navigationFor($request, $site),
@@ -417,8 +403,12 @@ class SiteController extends Controller
     {
         $site = $request->route('site') ?? $request->attributes->get('currentSite');
 
+        if (is_string($site)) {
+            $site = Site::where('slug', $site)->first();
+        }
+
         abort_if(! $site instanceof Site, 404, 'Site not found for this domain.');
-        abort_if(! $site->is_active, 404);
+        abort_if(! $site->is_active && ! $this->isPreview($request), 404);
 
         return $site;
     }
@@ -439,7 +429,7 @@ class SiteController extends Controller
 
     protected function projectsQuery(Site $site)
     {
-        return Project::query()->where('site_id', $site->id);
+        return Project::query()->where('site_id', $site->id)->with('projectStatus');
     }
 
     protected function newsQuery(Site $site)
@@ -447,6 +437,7 @@ class SiteController extends Controller
         return NewsArticle::query()
             ->where('site_id', $site->id)
             ->where('is_published', true)
+            ->with('newsCategory')
             ->orderByDesc('published_at');
     }
 

@@ -37,7 +37,7 @@ const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
                         <p class="mt-3 text-sm leading-7 text-[#777]">{{ project.summary }}</p>
 
                         <!-- 規格表 -->
-                        <div class="mt-8 pt-6" style="border-top:3px solid transparent; border-image:linear-gradient(to right, #3a6a7a, #a8d8ea) 1">
+                        <div class="mt-8 pt-6" style="border-top:5px solid transparent; border-image:linear-gradient(to left, #3a6a7a, #a8d8ea) 1">
                             <dl class="space-y-5">
                                 <div v-if="project.address || project.location" class="flex gap-6">
                                     <dt class="w-20 shrink-0 text-sm font-medium text-[#3a6a7a]">基地位置</dt>
@@ -65,7 +65,7 @@ const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
 
                     <!-- 底部 icon 按鈕列 -->
                     <div class="mt-8 flex flex-wrap gap-0 border-t border-stone-200 pt-6">
-                        <a :href="`tel:${project.sales_info?.sales_phone || site.contact_phone || ''}`" class="group flex flex-1 flex-col items-center gap-2.5 py-3 text-center text-xs text-[#5b9a3c] transition">
+                        <a :href="`tel:${project.sales_info?.sales_phone || site.footer_content?.phone || ''}`" class="group flex flex-1 flex-col items-center gap-2.5 py-3 text-center text-xs text-[#5b9a3c] transition">
                             <span class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#5b9a3c] transition group-hover:bg-[#5b9a3c] group-hover:text-white">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
                             </span>
@@ -83,13 +83,13 @@ const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
                             </span>
                             建案網站
                         </a>
-                        <a v-if="site.setting?.social_links?.facebook" :href="site.setting.social_links.facebook" target="_blank" rel="noopener noreferrer" class="group flex flex-1 flex-col items-center gap-2.5 border-l border-stone-200 py-3 text-center text-xs text-[#5b9a3c] transition">
+                        <a v-if="site.social_links?.facebook" :href="site.social_links.facebook" target="_blank" rel="noopener noreferrer" class="group flex flex-1 flex-col items-center gap-2.5 border-l border-stone-200 py-3 text-center text-xs text-[#5b9a3c] transition">
                             <span class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#5b9a3c] transition group-hover:bg-[#5b9a3c] group-hover:text-white">
                                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" /></svg>
                             </span>
                             粉絲專頁
                         </a>
-                        <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.setting?.footer_content?.address || project.address || '')}`" target="_blank" rel="noopener noreferrer" class="group flex flex-1 flex-col items-center gap-2.5 border-l border-stone-200 py-3 text-center text-xs text-[#5b9a3c] transition">
+                        <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.footer_content?.address || project.address || '')}`" target="_blank" rel="noopener noreferrer" class="group flex flex-1 flex-col items-center gap-2.5 border-l border-stone-200 py-3 text-center text-xs text-[#5b9a3c] transition">
                             <span class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#5b9a3c] transition group-hover:bg-[#5b9a3c] group-hover:text-white">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                             </span>

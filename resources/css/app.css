@@ -196,7 +196,7 @@
 
 /* Hero 建案縮圖列 */
 .theme-classic .hero-projects {
-  background: var(--dark); padding: 1.5rem 2rem;
+  background: #fff; padding: 1.5rem 2rem;
 }
 .theme-classic .hero-projects-inner {
   max-width: 1280px; margin: 0 auto;

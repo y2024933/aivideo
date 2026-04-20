@@ -30,6 +30,16 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->brandName('多站台管理系統')
+            ->favicon(asset('favicon.svg'))
+            ->bootUsing(function (Panel $panel) {
+                $user = auth()->user();
+                if ($user && ! $user->isSuperAdmin()) {
+                    $site = $user->sites()->first();
+                    if ($site) {
+                        $panel->brandName($site->name);
+                    }
+                }
+            })
             ->colors([
                 'primary' => Color::Amber,
             ])

@@ -18,7 +18,7 @@ defineProps({
             <div>
                 <h1 class="text-5xl font-semibold">{{ page?.title || '多元服務' }}</h1>
                 <p class="mt-8 text-lg leading-8 text-stone-600">
-                    {{ page?.summary || '延續建築價值的專業服務。' }}
+                    {{ page?.summary }}
                 </p>
                 <div class="prose mt-8 max-w-none prose-stone" v-html="page?.content" />
             </div>

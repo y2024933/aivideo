@@ -13,7 +13,7 @@ const props = defineProps({
     page: Object,
 });
 
-const teamMembers = computed(() => props.site.setting?.about_content?.team_members || []);
+const teamMembers = computed(() => props.site.about_content?.team_members || []);
 const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
 </script>
 
@@ -23,7 +23,7 @@ const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
             <div>
                 <h1 class="text-5xl font-semibold">{{ page?.title || '關於我們' }}</h1>
                 <p class="mt-8 text-lg leading-8 text-stone-600">
-                    {{ page?.summary || '文化為本，世代傳家。' }}
+                    {{ page?.summary }}
                 </p>
             </div>
 
@@ -33,7 +33,7 @@ const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
                 </div>
                 <div class="grid gap-4 md:grid-cols-3">
                     <div
-                        v-for="(item, index) in (site.setting?.about_content?.highlights || [])"
+                        v-for="(item, index) in (site.about_content?.highlights || [])"
                         :key="item.title || index"
                         class="rounded-[1.5rem] p-6"
                         :class="index === 0

@@ -25,7 +25,8 @@ class DomainsRelationManager extends RelationManager
                 ->required()
                 ->unique(ignoreRecord: true)
                 ->maxLength(255)
-                ->placeholder('example.com'),
+                ->placeholder('example.com')
+                ->columnSpanFull(),
         ]);
     }
 
@@ -37,11 +38,11 @@ class DomainsRelationManager extends RelationManager
                 TextColumn::make('created_at')->label('建立時間')->dateTime('Y-m-d H:i')->sortable(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()->modalWidth('md')->modalFooterActionsAlignment('center'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()->modalWidth('md')->modalFooterActionsAlignment('center'),
             ]);
     }
 }

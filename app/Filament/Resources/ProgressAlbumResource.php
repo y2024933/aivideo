@@ -33,6 +33,8 @@ class ProgressAlbumResource extends Resource
 
     protected static ?string $navigationGroup = '網站內容';
 
+    protected static ?int $navigationSort = 5;
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -82,7 +84,7 @@ class ProgressAlbumResource extends Resource
         return $table
             ->defaultSort('reported_at', 'desc')
             ->columns([
-                TextColumn::make('site.name')->label('網站')->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
+                TextColumn::make('site.name')->label('網站')->searchable(auth()->user()?->isSuperAdmin() ?? false)->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
                 TextColumn::make('project.name')
                     ->label('建案')
                     ->searchable()

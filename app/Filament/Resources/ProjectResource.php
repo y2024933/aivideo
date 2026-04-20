@@ -29,6 +29,8 @@ class ProjectResource extends Resource
 
     protected static ?string $navigationGroup = '網站內容';
 
+    protected static ?int $navigationSort = 4;
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function form(Form $form): Form
@@ -39,13 +41,22 @@ class ProjectResource extends Resource
                 ->relationship('site', 'name')
                 ->required()
                 ->visible(fn () => auth()->user()?->isSuperAdmin())
-                ->default(fn () => auth()->user()?->sites()->value('sites.id')),
+                ->default(fn () => auth()->user()?->sites()->value('sites.id'))
+                ->reactive()
+                ->afterStateUpdated(fn (callable $set) => $set('project_status_id', null)),
             TextInput::make('name')->label('建案名稱')->required()->maxLength(255),
             TextInput::make('slug')->label('頁面代碼')->required()->alphaDash(),
-            Select::make('status')->label('作品類型')->options([
-                'selling' => '熱銷新案',
-                'completed' => '歷史建案',
-            ])->required(),
+            Select::make('project_status_id')
+                ->label('作品類型')
+                ->required()
+                ->options(function (callable $get) {
+                    $siteId = $get('site_id') ?? auth()->user()?->sites()->value('sites.id');
+                    if (! $siteId) return [];
+                    return \App\Models\ProjectStatus::where('site_id', $siteId)
+                        ->orderBy('sort_order')
+                        ->pluck('name', 'id')
+                        ->all();
+                }),
             Textarea::make('summary')->label('摘要'),
             TextInput::make('progress_password')->label('工程進度密碼')->password()->revealable()->helperText('設定後，訪客需輸入此密碼才能查看該建案的工程進度'),
             TextInput::make('location')->label('地點'),
@@ -69,14 +80,10 @@ class ProjectResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('site.name')->label('網站')->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
+                TextColumn::make('site.name')->label('網站')->searchable(auth()->user()?->isSuperAdmin() ?? false)->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
                 TextColumn::make('name')->label('建案名稱')->searchable()->sortable(),
-                TextColumn::make('status')->label('作品類型')
-                    ->formatStateUsing(fn (string $state) => match ($state) {
-                        'selling' => '熱銷新案',
-                        'completed' => '歷史建案',
-                        default => $state,
-                    }),
+                TextColumn::make('projectStatus.name')->label('作品類型')
+                    ->badge(),
                 TextColumn::make('location')->label('地點'),
                 TextColumn::make('updated_at')->label('最後更新')->since(),
                 Tables\Columns\ToggleColumn::make('is_featured')->label('首頁精選')
@@ -89,12 +96,9 @@ class ProjectResource extends Resource
                         ->pluck('name', 'name')
                         ->toArray())
                     ->searchable(),
-                Tables\Filters\SelectFilter::make('status')
+                Tables\Filters\SelectFilter::make('project_status_id')
                     ->label('作品類型')
-                    ->options([
-                        'selling' => '熱銷新案',
-                        'completed' => '歷史建案',
-                    ]),
+                    ->relationship('projectStatus', 'name'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->link(),

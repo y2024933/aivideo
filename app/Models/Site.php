@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-
 class Site extends Model
 {
     use HasFactory;
@@ -17,25 +15,31 @@ class Site extends Model
         'name',
         'brand_name',
         'theme_key',
-        'primary_color',
-        'secondary_color',
         'logo_path',
         'favicon_path',
-        'contact_email',
-        'contact_phone',
         'is_active',
-        'has_news',
-        'has_progress',
-        'has_contact_form',
-        'has_projects',
+        'homepage_sections',
+        'hero_content',
+        'about_content',
+        'service_content',
+        'contact_content',
+        'social_links',
+        'seo_defaults',
+        'footer_content',
+        'tracking',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'has_news' => 'boolean',
-        'has_progress' => 'boolean',
-        'has_contact_form' => 'boolean',
-        'has_projects' => 'boolean',
+        'homepage_sections' => 'array',
+        'hero_content' => 'array',
+        'about_content' => 'array',
+        'service_content' => 'array',
+        'contact_content' => 'array',
+        'social_links' => 'array',
+        'seo_defaults' => 'array',
+        'footer_content' => 'array',
+        'tracking' => 'array',
     ];
 
     public function getRouteKeyName(): string
@@ -43,14 +47,19 @@ class Site extends Model
         return 'slug';
     }
 
+    public function projectStatuses(): HasMany
+    {
+        return $this->hasMany(ProjectStatus::class);
+    }
+
     public function domains(): HasMany
     {
         return $this->hasMany(SiteDomain::class);
     }
 
-    public function setting(): HasOne
+    public function newsCategories(): HasMany
     {
-        return $this->hasOne(SiteSetting::class);
+        return $this->hasMany(NewsCategory::class);
     }
 
     public function newsArticles(): HasMany

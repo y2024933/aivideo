@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Site;
 use App\Models\SiteDomain;
 use Closure;
 use Illuminate\Http\Request;
@@ -15,17 +14,10 @@ class ResolveCurrentSite
         $host = $request->getHost();
 
         $site = SiteDomain::query()
-            ->with('site.setting')
+            ->with('site')
             ->where('domain', $host)
             ->first()
             ?->site;
-
-        if (! $site && app()->environment(['local', 'testing'])) {
-            $site = Site::query()
-                ->with('setting')
-                ->where('is_active', true)
-                ->first();
-        }
 
         $request->attributes->set('currentSite', $site);
 

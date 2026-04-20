@@ -59,10 +59,6 @@ function formatYear(dateStr) {
                 <!-- 左：說明文字 -->
                 <div class="flex flex-col justify-center">
                     <div class="prose prose-stone max-w-none text-[15px] leading-8 text-stone-600" v-if="page?.content" v-html="page.content"></div>
-                    <div class="mt-8 space-y-4 text-[15px] leading-8 text-stone-600" v-else>
-                        <p>建築的價值，藏在每一道看不見的工序之中</p>
-                        <p>在這裡，我們完整揭露建築的成形過程——<br>從地基開挖、結構施作、水電配置到每一處細節修整，<br>每一道工序皆如實紀錄，透明呈現，<br>這不僅是工程進度的更新，更是對「品質至上、責任承諾」的具體實踐。</p>
-                    </div>
                 </div>
 
                 <!-- 右：登入表單 -->
@@ -142,7 +138,7 @@ function formatYear(dateStr) {
                     <p class="mt-3 text-sm tracking-[0.2em] text-[#c0965c]">{{ selectedProject?.name }} — 工程進度</p>
                     <div class="mx-auto mt-6 h-10 w-px bg-[#c0965c]/60"></div>
                     <p class="mx-auto mt-6 max-w-2xl text-sm leading-7 text-stone-400">
-                        {{ page?.summary || '透明呈現每一道施工節點與進度百分比。' }}
+                        {{ page?.summary }}
                     </p>
 
                     <div class="mt-14 space-y-8 text-left">

@@ -6,10 +6,11 @@ use App\Filament\Resources\SiteResource\Pages;
 use App\Filament\Resources\SiteResource\RelationManagers;
 use App\Models\Site;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -38,6 +39,8 @@ class SiteResource extends Resource
 
     protected static ?string $navigationGroup = '網站管理';
 
+    protected static ?int $navigationSort = 8;
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -50,10 +53,6 @@ class SiteResource extends Resource
                         'builder-classic' => 'Classic — 白底極簡風',
                         'builder-editorial' => 'Editorial — 文藝風',
                     ]),
-                TextInput::make('contact_email')->label('聯絡信箱')->email(),
-                TextInput::make('primary_color')->label('主色'),
-                TextInput::make('secondary_color')->label('輔色'),
-                TextInput::make('contact_phone')->label('聯絡電話'),
                 FileUpload::make('logo_path')
                     ->label('Logo')
                     ->disk('public')
@@ -68,13 +67,34 @@ class SiteResource extends Resource
                     ->image()
                     ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
             ]),
-            Grid::make(2)->schema([
-                Toggle::make('is_active')->label('啟用站台')->default(true),
-                Toggle::make('has_news')->label('啟用最新消息')->default(true),
-                Toggle::make('has_projects')->label('啟用建案')->default(true),
-                Toggle::make('has_progress')->label('啟用工程進度')->default(true),
-                Toggle::make('has_contact_form')->label('啟用聯絡表單')->default(true),
+            Section::make('首頁設定')->schema([
+                TextInput::make('hero_content.eyebrow')->label('前導文字'),
+                TextInput::make('hero_content.headline')->label('主標題')->required(),
+                Textarea::make('hero_content.subheadline')->label('副標題')->rows(3),
+                FileUpload::make('hero_content.background_image')
+                    ->label('首頁背景圖')->disk('public')->directory('site-hero-images')
+                    ->image()->imageEditor()
+                    ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
+            ])->columns(2),
+            Section::make('SEO 預設')->schema([
+                TextInput::make('seo_defaults.title')->label('SEO 標題'),
+                Textarea::make('seo_defaults.description')->label('SEO 描述')->rows(3),
             ]),
+            Section::make('頁尾資訊')->schema([
+                TextInput::make('footer_content.address')->label('地址'),
+                TextInput::make('footer_content.phone')->label('電話'),
+                TextInput::make('footer_content.email')->label('Email'),
+                TextInput::make('footer_content.copyright')->label('版權文字'),
+                TextInput::make('social_links.facebook')->label('Facebook'),
+                TextInput::make('social_links.instagram')->label('Instagram'),
+                TextInput::make('social_links.line')->label('LINE'),
+            ])->columns(2),
+            Section::make('行銷追蹤')->schema([
+                TextInput::make('tracking.ga4_id')->label('Google Analytics 4 ID')->placeholder('G-XXXXXXXXXX'),
+                TextInput::make('tracking.gtm_id')->label('Google Tag Manager ID')->placeholder('GTM-XXXXXXX'),
+                TextInput::make('tracking.meta_pixel_id')->label('Meta Pixel ID')->placeholder('1234567890'),
+                TextInput::make('tracking.line_tag_id')->label('LINE Tag ID')->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'),
+            ])->columns(2),
         ]);
     }
 
@@ -84,14 +104,19 @@ class SiteResource extends Resource
             ->columns([
                 TextColumn::make('name')->label('網站')->searchable()->sortable(),
                 TextColumn::make('domains.domain')->label('網域'),
-                TextColumn::make('theme_key')->label('主題'),
+                TextColumn::make('theme_key')->label('主題')
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'builder-classic' => 'Classic — 白底極簡風',
+                        'builder-editorial' => 'Editorial — 文藝風',
+                        default => $state,
+                    }),
                 IconColumn::make('is_active')->label('啟用')->boolean(),
             ])
             ->actions([
                 Action::make('preview')
                     ->label('預覽')
                     ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (Site $record): string => route('site.preview', $record))
+                    ->url(fn (Site $record): string => '/preview/' . $record->slug)
                     ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
             ])
