@@ -81,6 +81,12 @@ class SiteResource extends Resource
             Section::make('SEO 預設')->schema([
                 TextInput::make('seo_defaults.title')->label('SEO 標題'),
                 Textarea::make('seo_defaults.description')->label('SEO 描述')->rows(3),
+                TextInput::make('footer_content.opening_hours')->label('營業時間')
+                    ->placeholder('週一至週五 09:00-18:00, 週六 09:00-12:00')
+                    ->helperText('用於 Google 搜尋結果的結構化資料'),
+                TextInput::make('footer_content.area_served')->label('服務區域')
+                    ->placeholder('台中市, 新北市, 桃園市')
+                    ->helperText('用於 Google 搜尋結果的結構化資料'),
             ]),
             Section::make('GEO（AI 搜尋優化）')->schema([
                 Textarea::make('seo_defaults.llms_description')->label('AI 搜尋描述')
@@ -104,14 +110,6 @@ class SiteResource extends Resource
                 TextInput::make('footer_content.phone')->label('電話'),
                 TextInput::make('footer_content.email')->label('Email'),
                 TextInput::make('footer_content.copyright')->label('版權文字'),
-                TextInput::make('footer_content.opening_hours')->label('營業時間 (Schema)')
-                    ->placeholder('Mo-Fr 09:00-18:00, Sa 09:00-12:00')
-                    ->helperText('Schema.org 格式，多組用逗號分隔'),
-                TextInput::make('footer_content.latitude')->label('緯度')->numeric()->placeholder('25.0330'),
-                TextInput::make('footer_content.longitude')->label('經度')->numeric()->placeholder('121.5654'),
-                TextInput::make('footer_content.area_served')->label('服務區域')
-                    ->placeholder('台中市, 新北市, 桃園市')
-                    ->helperText('逗號分隔'),
                 TextInput::make('social_links.facebook')->label('Facebook'),
                 TextInput::make('social_links.instagram')->label('Instagram'),
                 TextInput::make('social_links.line')->label('LINE'),

@@ -40,13 +40,6 @@ const { seo } = useSeo({
         ...(props.site.footer_content?.opening_hours && {
             openingHours: props.site.footer_content.opening_hours.split(',').map(s => s.trim()),
         }),
-        ...(props.site.footer_content?.latitude && props.site.footer_content?.longitude && {
-            geo: {
-                '@type': 'GeoCoordinates',
-                latitude: parseFloat(props.site.footer_content.latitude),
-                longitude: parseFloat(props.site.footer_content.longitude),
-            },
-        }),
         ...(props.site.footer_content?.area_served && {
             areaServed: props.site.footer_content.area_served.split(',').map(s => s.trim()),
         }),
