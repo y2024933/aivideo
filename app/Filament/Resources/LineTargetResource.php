@@ -3,7 +3,9 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LineTargetResource\Pages;
+use App\Filament\Resources\LineTargetResource\Widgets;
 use App\Models\LineTarget;
+use App\Models\Site;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -81,13 +83,72 @@ class LineTargetResource extends Resource
                     }),
                 TextColumn::make('display_name')->label('顯示名稱')->searchable(),
                 TextColumn::make('line_id')->label('LINE ID')->limit(20)->copyable(),
-                TextColumn::make('sites_count')->label('分配站台數')->counts('sites'),
+                TextColumn::make('sites.name')->label('分配站台')->badge()->separator(','),
                 IconColumn::make('is_active')->label('啟用')->boolean(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('assignSites')
+                        ->label('批量分配站台')
+                        ->icon('heroicon-o-building-office-2')
+                        ->form([
+                            CheckboxList::make('site_ids')
+                                ->label('分配給以下站台')
+                                ->options(Site::pluck('name', 'id'))
+                                ->columns(2)
+                                ->required(),
+                        ])
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
+                            foreach ($records as $target) {
+                                $target->sites()->syncWithoutDetaching($data['site_ids']);
+                            }
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->successNotificationTitle('已批量分配站台'),
+                    Tables\Actions\BulkAction::make('removeSites')
+                        ->label('批量移除站台')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->form([
+                            CheckboxList::make('site_ids')
+                                ->label('從以下站台移除')
+                                ->options(Site::pluck('name', 'id'))
+                                ->columns(2)
+                                ->required(),
+                        ])
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
+                            foreach ($records as $target) {
+                                $target->sites()->detach($data['site_ids']);
+                            }
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->successNotificationTitle('已批量移除站台'),
+                    Tables\Actions\BulkAction::make('activate')
+                        ->label('批量啟用')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->action(fn (\Illuminate\Database\Eloquent\Collection $records) => $records->each->update(['is_active' => true]))
+                        ->deselectRecordsAfterCompletion()
+                        ->successNotificationTitle('已批量啟用'),
+                    Tables\Actions\BulkAction::make('deactivate')
+                        ->label('批量停用')
+                        ->icon('heroicon-o-no-symbol')
+                        ->color('danger')
+                        ->action(fn (\Illuminate\Database\Eloquent\Collection $records) => $records->each->update(['is_active' => false]))
+                        ->deselectRecordsAfterCompletion()
+                        ->successNotificationTitle('已批量停用'),
+                ]),
+            ]);
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            Widgets\LineTargetInfoWidget::class,
+        ];
     }
 
     public static function getPages(): array

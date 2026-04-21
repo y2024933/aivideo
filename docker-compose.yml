@@ -25,6 +25,30 @@ services:
       mysql:
         condition: service_healthy
 
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: multisite-cms-queue
+    working_dir: /var/www/html
+    command: >-
+      sh -lc "if [ ! -f vendor/autoload.php ]; then composer install; fi
+      && php artisan queue:work database --sleep=3 --tries=3 --max-time=3600"
+    volumes:
+      - ./:/var/www/html
+      - vendor_data:/var/www/html/vendor
+      - storage_data:/var/www/html/storage
+    env_file:
+      - .env.docker
+    environment:
+      DB_SOCKET: ""
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
   web:
     image: nginx:1.27-alpine
     container_name: multisite-cms-web
@@ -72,13 +96,6 @@ services:
       timeout: 5s
       retries: 20
       interval: 5s
-
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: multisite-cms-mailpit
-    ports:
-      - "1025:1025"
-      - "8025:8025"
 
   phpmyadmin:
     image: phpmyadmin:latest

@@ -54,6 +54,10 @@ function submit() {
             showSuccess.value = true;
             setTimeout(() => { showSuccess.value = false; }, 5000);
         },
+        onError: () => {
+            form.captcha = '';
+            refreshCaptcha();
+        },
     });
 }
 </script>
@@ -115,7 +119,7 @@ function submit() {
                         <div class="flex items-center gap-3">
                             <label class="shrink-0 text-sm"><span class="text-red-500 text-xs">＊</span>驗證碼</label>
                             <input v-model="form.captcha" type="text" placeholder="請輸入驗證碼" class="w-40 rounded-xl border border-stone-300 bg-transparent px-3 py-1.5 text-sm" />
-                            <img :src="`/captcha?t=${captchaKey}`" alt="驗證碼" class="h-8 cursor-pointer rounded" @click="refreshCaptcha" title="點擊更換驗證碼" />
+                            <img :src="`/captcha?t=${captchaKey}`" alt="驗證碼" class="h-10 cursor-pointer rounded" @click="refreshCaptcha" title="點擊更換驗證碼" />
                         </div>
                         <button type="submit" class="rounded-full px-6 py-1.5 text-sm font-medium transition bg-[var(--site-primary)] text-white hover:opacity-90" :disabled="form.processing">
                             {{ form.processing ? '送出中...' : '送出表單' }}

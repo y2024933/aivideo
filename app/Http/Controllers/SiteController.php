@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\ContactMessageNotification;
+use App\Jobs\SendContactNotification;
 use App\Models\ContactMessage;
 use App\Models\NewsArticle;
 use App\Models\Page;
@@ -10,11 +10,9 @@ use App\Models\Project;
 use App\Models\ProgressAlbum;
 use App\Models\ProgressUpdate;
 use App\Models\Site;
-use App\Services\LineMessagingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -330,44 +328,9 @@ class SiteController extends Controller
             'source_page' => $request->path(),
         ]);
 
-        // 回應送出後才執行通知，不拖慢表單回應
-        app()->terminating(function () use ($contactMessage, $site) {
-            try {
-                $this->dispatchNotifications($contactMessage, $site);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('聯絡表單通知失敗', ['error' => $e->getMessage()]);
-            }
-        });
+        SendContactNotification::dispatch($contactMessage, $site);
 
         return back()->with('success', '已收到您的訊息，我們會盡快與您聯繫。');
-    }
-
-    private function dispatchNotifications(ContactMessage $contactMessage, Site $site): void
-    {
-        $settings = $site->notification_settings ?? [];
-        if (! ($settings['notify_enabled'] ?? false)) return;
-
-        $contactMessage->loadMissing('project');
-
-        // Email 通知
-        $emails = array_filter($settings['notify_emails'] ?? []);
-        if ($emails) {
-            Mail::to($emails)->send(new ContactMessageNotification($contactMessage, $site));
-        }
-
-        // LINE 通知
-        $lineTargets = $site->lineTargets()->where('is_active', true)->with('channel')->get();
-        if ($lineTargets->isEmpty()) return;
-
-        $lineService = app(LineMessagingService::class);
-        $msg = Str::limit($contactMessage->message, 500);
-        $text = "[{$site->name}] 新的聯絡訊息\n姓名：{$contactMessage->name}\n電話：{$contactMessage->phone}\n類型：{$contactMessage->inquiry_type}\n訊息：{$msg}";
-
-        foreach ($lineTargets as $target) {
-            if ($target->channel?->is_active) {
-                $lineService->pushMessage($target->channel, $target->line_id, $text);
-            }
-        }
     }
 
     protected function sharedProps(Request $request, Site $site): array

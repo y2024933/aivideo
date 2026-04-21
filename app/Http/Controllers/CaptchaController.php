@@ -9,11 +9,16 @@ class CaptchaController extends Controller
 {
     public function generate(): Response
     {
-        $code = Str::upper(Str::random(5));
+        // 排除易混淆字元：0O, 1Il, 2Z, 5S, 8B
+        $chars = 'ACDEFGHJKMNPQRTUVWXY3467';
+        $code = '';
+        for ($i = 0; $i < 5; $i++) {
+            $code .= $chars[random_int(0, strlen($chars) - 1)];
+        }
         session(['captcha_code' => $code]);
 
-        $width = 150;
-        $height = 45;
+        $width = 180;
+        $height = 50;
         $image = imagecreatetruecolor($width, $height);
 
         /* 背景 */
@@ -35,11 +40,11 @@ class CaptchaController extends Controller
         /* 文字 */
         $textColor = imagecolorallocate($image, rand(20, 80), rand(20, 80), rand(20, 80));
         $fontSize = 5; /* GD 內建字型大小 1-5 */
-        $x = 20;
+        $x = 22;
         for ($i = 0; $i < strlen($code); $i++) {
-            $y = rand(8, 18);
+            $y = rand(10, 22);
             imagestring($image, $fontSize, $x, $y, $code[$i], $textColor);
-            $x += rand(22, 28);
+            $x += rand(26, 32);
         }
 
         ob_start();

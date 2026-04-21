@@ -47,6 +47,10 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::TOPBAR_START,
                 fn (): string => view('filament.site-scope-banner')->render()
             )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => '<style>.line-target-select input[type="search"]{min-width:20rem!important;width:auto!important}</style>'
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
