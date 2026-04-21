@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\SiteResource\Pages;
 use App\Filament\Resources\SiteResource\RelationManagers;
 use App\Models\Site;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
@@ -12,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -119,6 +121,25 @@ class SiteResource extends Resource
                 TextInput::make('tracking.gtm_id')->label('Google Tag Manager ID')->placeholder('GTM-XXXXXXX'),
                 TextInput::make('tracking.meta_pixel_id')->label('Meta Pixel ID')->placeholder('1234567890'),
                 TextInput::make('tracking.line_tag_id')->label('LINE Tag ID')->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'),
+            ])->columns(2),
+            Section::make('通知設定')->schema([
+                Toggle::make('notification_settings.notify_enabled')
+                    ->label('啟用表單通知')
+                    ->helperText('啟用後，聯絡表單送出時會自動發送 Email 和 LINE 通知'),
+                Repeater::make('notification_settings.notify_emails')
+                    ->label('通知 Email')
+                    ->simple(
+                        TextInput::make('email')->label('Email')->email()->required(),
+                    )
+                    ->helperText('收到聯絡表單時，通知這些 Email 地址')
+                    ->collapsible()
+                    ->columnSpanFull(),
+                CheckboxList::make('lineTargets')
+                    ->label('LINE 推播對象')
+                    ->relationship('lineTargets', 'display_name')
+                    ->helperText('勾選要接收通知的 LINE 群組或使用者（需先由 Super Admin 在「LINE 推播對象」分配）')
+                    ->columns(2)
+                    ->columnSpanFull(),
             ])->columns(2),
         ]);
     }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Site extends Model
 {
@@ -32,6 +33,7 @@ class Site extends Model
         'seo_defaults',
         'footer_content',
         'tracking',
+        'notification_settings',
     ];
 
     protected $casts = [
@@ -45,6 +47,7 @@ class Site extends Model
         'seo_defaults' => 'array',
         'footer_content' => 'array',
         'tracking' => 'array',
+        'notification_settings' => 'array',
     ];
 
     public function getRouteKeyName(): string
@@ -100,5 +103,10 @@ class Site extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
+    public function lineTargets(): BelongsToMany
+    {
+        return $this->belongsToMany(LineTarget::class, 'line_target_site');
     }
 }
