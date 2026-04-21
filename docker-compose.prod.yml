@@ -30,6 +30,30 @@ services:
       mysql:
         condition: service_healthy
 
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: cms-queue
+    working_dir: /var/www/html
+    restart: unless-stopped
+    command: >-
+      sh -lc "if [ ! -f vendor/autoload.php ]; then composer install --no-dev --optimize-autoloader; fi
+      && php artisan queue:work database --sleep=3 --tries=3 --max-time=3600"
+    volumes:
+      - ./:/var/www/html
+      - vendor_data:/var/www/html/vendor
+      - storage_data:/var/www/html/storage
+    env_file:
+      - .env.production
+    environment:
+      DB_SOCKET: ""
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+
   web:
     image: nginx:1.27-alpine
     container_name: cms-web
