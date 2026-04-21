@@ -39,13 +39,19 @@ class NavigationItemResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('site_id')
-                ->label('網站')
-                ->relationship('site', 'name')
-                ->required()
-                ->reactive()
-                ->visible(fn () => auth()->user()?->isSuperAdmin())
-                ->default(fn () => auth()->user()?->sites()->value('sites.id')),
+            \Filament\Forms\Components\Grid::make(2)->schema([
+                Select::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->required()
+                    ->reactive()
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->default(fn () => auth()->user()?->sites()->value('sites.id')),
+                Toggle::make('is_visible')
+                    ->label('顯示')
+                    ->default(true)
+                    ->inline(false),
+            ]),
             Select::make('position')
                 ->label('選單位置')
                 ->options([
@@ -102,9 +108,6 @@ class NavigationItemResource extends Resource
                 ->label('排序')
                 ->numeric()
                 ->default(0),
-            Toggle::make('is_visible')
-                ->label('顯示')
-                ->default(true),
         ])->columns(2);
     }
 
@@ -143,6 +146,10 @@ class NavigationItemResource extends Resource
                     ->boolean(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 Tables\Filters\SelectFilter::make('position')
                     ->label('位置')
                     ->options([

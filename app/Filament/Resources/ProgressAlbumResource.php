@@ -33,18 +33,21 @@ class ProgressAlbumResource extends Resource
 
     protected static ?string $navigationGroup = '網站內容';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 5; // 工程相簿
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('site_id')
-                ->label('網站')
-                ->relationship('site', 'name')
-                ->required()
-                ->hidden(fn () => ! auth()->user()?->isSuperAdmin())
-                ->default(fn () => auth()->user()?->sites()->value('sites.id'))
-                ->dehydrated(true),
+            \Filament\Forms\Components\Grid::make(2)->schema([
+                Select::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->required()
+                    ->hidden(fn () => ! auth()->user()?->isSuperAdmin())
+                    ->default(fn () => auth()->user()?->sites()->value('sites.id'))
+                    ->dehydrated(true),
+                Toggle::make('is_published')->label('上架')->default(true)->inline(false),
+            ]),
             Grid::make(3)->schema([
                 Select::make('project_id')
                     ->label('建案名稱')
@@ -64,7 +67,6 @@ class ProgressAlbumResource extends Resource
                     ->required()
                     ->suffix('%'),
             ]),
-            Toggle::make('is_published')->label('上架')->default(true),
             FileUpload::make('gallery')
                 ->label('施工照片')
                 ->disk('public')
@@ -109,6 +111,10 @@ class ProgressAlbumResource extends Resource
                 IconColumn::make('is_published')->label('上架')->boolean(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 SelectFilter::make('project_id')
                     ->label('建案')
                     ->relationship('project', 'name')

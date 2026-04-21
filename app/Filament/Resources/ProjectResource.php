@@ -29,7 +29,7 @@ class ProjectResource extends Resource
 
     protected static ?string $navigationGroup = '網站內容';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 6; // 建案管理
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -91,6 +91,10 @@ class ProjectResource extends Resource
                     ->onColor('success'),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 Tables\Filters\SelectFilter::make('name')
                     ->label('建案名稱')
                     ->options(fn () => \App\Models\Project::query()

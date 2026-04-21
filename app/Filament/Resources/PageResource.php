@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PageResource\Pages;
 use App\Models\Page;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use FilamentTiptapEditor\TiptapEditor;
@@ -44,12 +45,18 @@ class PageResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('site_id')
-                ->label('網站')
-                ->relationship('site', 'name')
-                ->required()
-                ->visible(fn () => auth()->user()?->isSuperAdmin())
-                ->default(fn () => auth()->user()?->sites()->value('sites.id')),
+            Grid::make(2)->schema([
+                Select::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->required()
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->default(fn () => auth()->user()?->sites()->value('sites.id')),
+                Toggle::make('is_published')
+                    ->label('上架')
+                    ->default(true)
+                    ->inline(false),
+            ]),
             TextInput::make('title')
                 ->label('頁面標題')
                 ->required()
@@ -129,9 +136,6 @@ class PageResource extends Resource
                 ->default(0),
             DateTimePicker::make('published_at')
                 ->label('發布時間'),
-            Toggle::make('is_published')
-                ->label('上架')
-                ->default(true),
         ])->columns(2);
     }
 
@@ -169,6 +173,10 @@ class PageResource extends Resource
                     ->boolean(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 Tables\Filters\SelectFilter::make('page_type')
                     ->label('頁面類型')
                     ->options([

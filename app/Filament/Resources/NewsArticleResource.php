@@ -38,14 +38,17 @@ class NewsArticleResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('site_id')
-                ->label('網站')
-                ->relationship('site', 'name')
-                ->required()
-                ->visible(fn () => auth()->user()?->isSuperAdmin())
-                ->default(fn () => auth()->user()?->sites()->value('sites.id'))
-                ->reactive()
-                ->afterStateUpdated(fn (callable $set) => $set('news_category_id', null)),
+            \Filament\Forms\Components\Grid::make(2)->schema([
+                Select::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->required()
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->default(fn () => auth()->user()?->sites()->value('sites.id'))
+                    ->reactive()
+                    ->afterStateUpdated(fn (callable $set) => $set('news_category_id', null)),
+                Toggle::make('is_published')->label('上架')->default(true)->inline(false),
+            ]),
             TextInput::make('title')->label('標題')->required()->maxLength(255),
             TextInput::make('slug')->label('頁面代碼')->required()->alphaDash(),
             Select::make('news_category_id')
@@ -73,7 +76,6 @@ class NewsArticleResource extends Resource
                 ->maxSize((int) env('UPLOAD_MAX_SIZE_KB', 2048)),
             TextInput::make('featured_image_alt')->label('圖片 Alt Text')->helperText('描述圖片內容，有助 SEO 與無障礙')->maxLength(255),
             DateTimePicker::make('published_at')->label('發布時間'),
-            Toggle::make('is_published')->label('上架')->default(true),
         ]);
     }
 
@@ -84,7 +86,7 @@ class NewsArticleResource extends Resource
                 TextColumn::make('site.name')->label('網站')->searchable(auth()->user()?->isSuperAdmin() ?? false)->visible(fn () => auth()->user()?->isSuperAdmin())->toggleable(),
                 TextColumn::make('title')->label('標題')->searchable()->sortable(),
                 TextColumn::make('newsCategory.name')->label('分類'),
-                TextColumn::make('published_at')->label('發布時間')->dateTime('Y-m-d H:i'),
+                TextColumn::make('published_at')->label('發布時間')->dateTime('Y-m-d H:i')->sortable(),
                 TextColumn::make('updated_at')->label('最後更新')->since(),
                 IconColumn::make('is_published')->label('上架')->boolean(),
             ])
@@ -96,7 +98,12 @@ class NewsArticleResource extends Resource
                     ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
+                Tables\Filters\SelectFilter::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 Tables\Filters\SelectFilter::make('news_category_id')
                     ->label('分類')
                     ->relationship('newsCategory', 'name'),

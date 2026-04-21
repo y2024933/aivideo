@@ -65,6 +65,8 @@ class ContactMessageResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('site.name')->label('網站')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 TextColumn::make('name')->label('姓名')->searchable(),
                 TextColumn::make('phone')->label('電話'),
                 TextColumn::make('inquiry_type')->label('詢問項目'),
@@ -82,7 +84,21 @@ class ContactMessageResource extends Resource
                         default => 'gray',
                     }),
                 TextColumn::make('assigned_to')->label('負責人'),
-                TextColumn::make('created_at')->label('建立時間')->dateTime('Y-m-d H:i'),
+                TextColumn::make('created_at')->label('建立時間')->dateTime('Y-m-d H:i')->sortable(),
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->filters([
+                Tables\Filters\SelectFilter::make('site_id')
+                    ->label('網站')
+                    ->relationship('site', 'name')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('狀態')
+                    ->options([
+                        'new' => '新進',
+                        'processing' => '處理中',
+                        'closed' => '已結案',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->label('處理'),
