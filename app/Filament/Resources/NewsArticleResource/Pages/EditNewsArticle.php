@@ -4,9 +4,9 @@ namespace App\Filament\Resources\NewsArticleResource\Pages;
 
 use App\Filament\Resources\NewsArticleResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditNewsArticle extends EditRecord
+class EditNewsArticle extends BaseEditRecord
 {
     protected static string $resource = NewsArticleResource::class;
 

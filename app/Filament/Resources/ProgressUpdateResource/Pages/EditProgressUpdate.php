@@ -4,9 +4,9 @@ namespace App\Filament\Resources\ProgressUpdateResource\Pages;
 
 use App\Filament\Resources\ProgressUpdateResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditProgressUpdate extends EditRecord
+class EditProgressUpdate extends BaseEditRecord
 {
     protected static string $resource = ProgressUpdateResource::class;
 

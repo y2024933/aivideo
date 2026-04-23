@@ -4,9 +4,9 @@ namespace App\Filament\Resources\ProgressAlbumResource\Pages;
 
 use App\Filament\Resources\ProgressAlbumResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditProgressAlbum extends EditRecord
+class EditProgressAlbum extends BaseEditRecord
 {
     protected static string $resource = ProgressAlbumResource::class;
 

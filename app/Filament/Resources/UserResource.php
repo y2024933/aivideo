@@ -43,8 +43,8 @@ class UserResource extends Resource
                 TextInput::make('password')->label('密碼')->password()->revealable()
                     ->required(fn (string $context): bool => $context === 'create')
                     ->dehydrated(fn (?string $state): bool => filled($state))
-                    ->helperText(fn (string $context) => $context === 'edit' ? '留空則不修改密碼' : null)
-                    ->maxLength(255),
+                    ->helperText(fn (string $context) => $context === 'edit' ? '留空則不修改密碼，最少 6 位' : '最少 6 位')
+                    ->minLength(6)->maxLength(255),
                 Select::make('role')->label('角色')
                     ->options([
                         'super_admin' => '超級管理員',

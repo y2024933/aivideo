@@ -4,9 +4,9 @@ namespace App\Filament\Resources\LineTargetResource\Pages;
 
 use App\Filament\Resources\LineTargetResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditLineTarget extends EditRecord
+class EditLineTarget extends BaseEditRecord
 {
     protected static string $resource = LineTargetResource::class;
 

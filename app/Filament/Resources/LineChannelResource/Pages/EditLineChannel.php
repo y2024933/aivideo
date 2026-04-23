@@ -4,9 +4,9 @@ namespace App\Filament\Resources\LineChannelResource\Pages;
 
 use App\Filament\Resources\LineChannelResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditLineChannel extends EditRecord
+class EditLineChannel extends BaseEditRecord
 {
     protected static string $resource = LineChannelResource::class;
 

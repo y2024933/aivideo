@@ -4,9 +4,9 @@ namespace App\Filament\Resources\NavigationItemResource\Pages;
 
 use App\Filament\Resources\NavigationItemResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditNavigationItem extends EditRecord
+class EditNavigationItem extends BaseEditRecord
 {
     protected static string $resource = NavigationItemResource::class;
 

@@ -4,9 +4,9 @@ namespace App\Filament\Resources\SiteResource\Pages;
 
 use App\Filament\Resources\SiteResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditSite extends EditRecord
+class EditSite extends BaseEditRecord
 {
     protected static string $resource = SiteResource::class;
 

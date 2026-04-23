@@ -28,7 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->profile()
+            ->profile(\App\Filament\Pages\EditProfile::class)
             ->brandName('多站台管理系統')
             ->favicon(asset('favicon.svg'))
             ->bootUsing(function (Panel $panel) {

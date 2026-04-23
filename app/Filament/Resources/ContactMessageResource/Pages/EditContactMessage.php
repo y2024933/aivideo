@@ -4,9 +4,9 @@ namespace App\Filament\Resources\ContactMessageResource\Pages;
 
 use App\Filament\Resources\ContactMessageResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pages\BaseEditRecord;
 
-class EditContactMessage extends EditRecord
+class EditContactMessage extends BaseEditRecord
 {
     protected static string $resource = ContactMessageResource::class;
 
