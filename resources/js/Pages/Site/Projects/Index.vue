@@ -41,37 +41,30 @@ const filteredProjects = computed(() => {
 <template>
     <SiteLayout :title="page?.title || '建築業績'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
         <section class="mx-auto max-w-7xl px-6 py-20">
-            <div class="grid gap-10 lg:grid-cols-[0.42fr_0.58fr]">
-                <div>
-                    <h1 class="text-5xl font-semibold">{{ page?.title || '建築業績' }}</h1>
-                    <p class="mt-8 text-lg leading-8 text-stone-600">
-                        {{ page?.summary }}
-                    </p>
-                    <div class="mt-8 flex flex-wrap gap-3">
-                        <button
-                            @click="currentStatus = null"
-                            class="rounded-full border px-4 py-2 text-sm transition"
-                            :class="!currentStatus
-                                ? 'border-[var(--site-primary)] bg-[var(--site-primary)] text-white'
-                                : 'border-stone-300 text-stone-600'"
-                        >
-                            所有作品
-                        </button>
-                        <button
-                            v-for="status in statusList"
-                            :key="status.id"
-                            @click="currentStatus = status.id"
-                            class="rounded-full border px-4 py-2 text-sm transition"
-                            :class="currentStatus === status.id
-                                ? 'border-[var(--site-primary)] bg-[var(--site-primary)] text-white'
-                                : 'border-stone-300 text-stone-600'"
-                        >
-                            {{ status.name }}
-                        </button>
-                    </div>
-                </div>
-                <div class="rounded-[2rem] border p-8" :class="site.theme_key === 'builder-editorial' ? 'border-stone-300 bg-white' : 'border-stone-200 bg-white'">
-                    <div class="prose prose-stone max-w-none" v-html="page?.content" />
+            <div>
+                <h1 class="text-5xl font-semibold">{{ page?.title || '建築業績' }}</h1>
+                <div v-if="page?.content" class="mt-4 max-w-none prose prose-stone prose-p:my-0 prose-p:leading-8" v-html="page.content" />
+                <div class="mt-8 flex flex-wrap gap-3">
+                    <button
+                        @click="currentStatus = null"
+                        class="rounded-full border px-4 py-2 text-sm transition"
+                        :class="!currentStatus
+                            ? 'border-[var(--site-primary)] bg-[var(--site-primary)] text-white'
+                            : 'border-stone-300 text-stone-600'"
+                    >
+                        所有作品
+                    </button>
+                    <button
+                        v-for="status in statusList"
+                        :key="status.id"
+                        @click="currentStatus = status.id"
+                        class="rounded-full border px-4 py-2 text-sm transition"
+                        :class="currentStatus === status.id
+                            ? 'border-[var(--site-primary)] bg-[var(--site-primary)] text-white'
+                            : 'border-stone-300 text-stone-600'"
+                    >
+                        {{ status.name }}
+                    </button>
                 </div>
             </div>
 

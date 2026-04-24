@@ -33,36 +33,14 @@ const isClassic = computed(() => props.site.theme_key !== 'builder-editorial');
 
 <template>
     <SiteLayout :title="page?.title || '關於我們'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
-        <section class="mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-[0.85fr_1.15fr]">
-            <div>
-                <h1 class="text-5xl font-semibold">{{ page?.title || '關於我們' }}</h1>
-                <p class="mt-8 text-lg leading-8 text-stone-600">
-                    {{ page?.summary }}
-                </p>
-            </div>
-
-            <div class="space-y-8">
-                <div class="rounded-[2rem] border p-8" :class="site.theme_key === 'builder-editorial' ? 'border-stone-300 bg-white' : 'border-stone-200 bg-white'">
-                    <div class="prose max-w-none prose-stone" v-html="page?.content" />
-                </div>
-                <div class="grid gap-4 md:grid-cols-3">
-                    <div
-                        v-for="(item, index) in (site.about_content?.highlights || [])"
-                        :key="item.title || index"
-                        class="rounded-[1.5rem] p-6"
-                        :class="index === 0
-                            ? (site.theme_key === 'builder-editorial' ? 'bg-[var(--site-secondary)] text-stone-800' : 'bg-[#f8f8f8] text-stone-700')
-                            : (site.theme_key === 'builder-editorial' ? 'bg-white border border-stone-300 text-stone-800' : 'bg-white border border-stone-200 text-stone-700')"
-                    >
-                        <p class="text-sm uppercase tracking-[0.3em]">{{ item.title }}</p>
-                        <p class="mt-3 text-sm leading-7">{{ item.description }}</p>
-                    </div>
-                </div>
-            </div>
+        <section class="mx-auto max-w-5xl px-6 py-20">
+            <h1 class="text-3xl font-bold md:text-4xl">{{ page?.summary }}</h1>
+            <div class="mt-12 prose max-w-none prose-stone prose-p:leading-8 prose-p:text-stone-800" v-html="page?.content" />
         </section>
 
+
         <!-- 形象照 2×2 Grid -->
-        <section v-if="page?.gallery?.length" class="mx-auto max-w-7xl px-6 pb-16">
+        <section v-if="page?.gallery?.length" class="mx-auto max-w-5xl px-6 pb-16">
             <div class="grid gap-4 md:grid-cols-2" data-animate>
                 <div
                     v-for="(img, i) in page.gallery.slice(0, 4)"

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\NewsArticle;
+use App\Models\Page;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -17,10 +18,21 @@ class SitemapController extends Controller
         $baseUrl = $request->getScheme() . '://' . $request->getHost();
         $urls = collect();
 
-        // 靜態頁面
-        foreach (['/' => '1.0', '/about' => '0.8', '/projects' => '0.8', '/news' => '0.8', '/services' => '0.7', '/progress' => '0.7', '/contact' => '0.7'] as $path => $priority) {
-            $urls->push(['loc' => $baseUrl . $path, 'changefreq' => 'weekly', 'priority' => $priority]);
-        }
+        // 首頁
+        $urls->push(['loc' => $baseUrl . '/', 'changefreq' => 'weekly', 'priority' => '1.0']);
+
+        // 動態頁面
+        Page::where('site_id', $site->id)
+            ->where('is_published', true)
+            ->where('page_type', '!=', 'home')
+            ->select('slug', 'updated_at')
+            ->get()
+            ->each(fn ($p) => $urls->push([
+                'loc' => $baseUrl . '/' . $p->slug,
+                'lastmod' => $p->updated_at->toW3cString(),
+                'changefreq' => 'weekly',
+                'priority' => '0.8',
+            ]));
 
         // 建案
         Project::where('site_id', $site->id)->select('slug', 'updated_at')->get()->each(fn ($p) =>

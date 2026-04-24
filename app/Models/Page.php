@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PageTemplate;
 use App\Traits\CleansTrixContent;
 use App\Traits\OptimizesImages;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -38,6 +39,7 @@ class Page extends Model
     ];
 
     protected $casts = [
+        'page_type' => PageTemplate::class,
         'faq_items' => 'array',
         'gallery' => 'array',
         'is_published' => 'boolean',

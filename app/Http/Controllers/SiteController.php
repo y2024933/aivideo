@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PageTemplate;
 use App\Jobs\SendContactNotification;
 use App\Models\ContactMessage;
 use App\Models\NewsArticle;
@@ -26,12 +27,12 @@ class SiteController extends Controller
         return Inertia::render('Site/Home', [
             ...$this->sharedProps($request, $site),
             'metaDescription' => $this->metaDescription($site->seo_defaults['description'] ?? null, null),
-            'aboutPage' => $this->findPage($site, 'about'),
-            'projectsPage' => $this->findPage($site, 'projects'),
-            'newsPage' => $this->findPage($site, 'news'),
-            'servicesPage' => $this->findPage($site, 'services'),
-            'progressPage' => $this->findPage($site, 'progress'),
-            'contactPage' => $this->findPage($site, 'contact'),
+            'aboutPage' => $this->findPageByTemplate($site, PageTemplate::About),
+            'projectsPage' => $this->findPageByTemplate($site, PageTemplate::Projects),
+            'newsPage' => $this->findPageByTemplate($site, PageTemplate::News),
+            'servicesPage' => $this->findPageByTemplate($site, PageTemplate::Services),
+            'progressPage' => $this->findPageByTemplate($site, PageTemplate::Progress),
+            'contactPage' => $this->findPageByTemplate($site, PageTemplate::Contact),
             'featuredProjects' => $this->projectsQuery($site)
                 ->orderByDesc('is_featured')
                 ->orderBy('sort_order')
@@ -50,35 +51,44 @@ class SiteController extends Controller
         ]);
     }
 
-    public function about(Request $request): Response
+    public function dynamicPage(Request $request): Response
     {
         $site = $this->resolveSite($request);
+        $slug = $request->route('pageSlug');
 
-        $page = $this->findPage($site, 'about');
+        $page = Page::query()
+            ->where('site_id', $site->id)
+            ->where('slug', $slug)
+            ->where('is_published', true)
+            ->where('page_type', '!=', PageTemplate::Home)
+            ->firstOrFail();
 
-        return Inertia::render('Site/About', [
+        $template = $page->page_type;
+
+        return Inertia::render($template->inertiaPage(), [
             ...$this->sharedProps($request, $site),
-            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary, $page?->content),
+            'metaDescription' => $this->metaDescription($page->seo_description, $page->summary, $page->content),
             'page' => $page,
+            ...$this->extraPropsForTemplate($request, $site, $template),
         ]);
     }
 
-    public function projects(Request $request): Response
+    public function dynamicPagePost(Request $request): RedirectResponse
     {
         $site = $this->resolveSite($request);
-        $page = $this->findPage($site, 'projects');
+        $slug = $request->route('pageSlug');
 
-        return Inertia::render('Site/Projects/Index', [
-            ...$this->sharedProps($request, $site),
-            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
-            'page' => $page,
-            'projects' => $this->projectsQuery($site)
-                ->orderByDesc('is_featured')
-                ->orderByDesc('launch_year')
-                ->orderBy('sort_order')
-                ->get(),
-            'statusList' => $site->projectStatuses()->orderBy('sort_order')->get(['id', 'name']),
-        ]);
+        $page = Page::query()
+            ->where('site_id', $site->id)
+            ->where('slug', $slug)
+            ->where('is_published', true)
+            ->firstOrFail();
+
+        return match ($page->page_type) {
+            PageTemplate::Progress => $this->progressAuth($request),
+            PageTemplate::Contact => $this->submitContact($request),
+            default => abort(404),
+        };
     }
 
     public function projectShow(Request $request): Response
@@ -107,29 +117,6 @@ class SiteController extends Controller
         ]);
     }
 
-    public function news(Request $request): Response
-    {
-        $site = $this->resolveSite($request);
-        $activeCategory = $request->integer('category') ?: null;
-        $query = $this->newsQuery($site);
-        $page = $this->findPage($site, 'news');
-
-        $categories = $site->newsCategories()->orderBy('sort_order')->get(['id', 'name']);
-
-        if ($activeCategory) {
-            $query->where('news_category_id', $activeCategory);
-        }
-
-        return Inertia::render('Site/News/Index', [
-            ...$this->sharedProps($request, $site),
-            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
-            'page' => $page,
-            'articles' => $query->paginate(12)->withQueryString(),
-            'categories' => $categories,
-            'activeCategory' => $activeCategory,
-        ]);
-    }
-
     public function newsShow(Request $request): Response
     {
         $site = $this->resolveSite($request);
@@ -151,75 +138,27 @@ class SiteController extends Controller
         ]);
     }
 
-    public function services(Request $request): Response
+    public function progressAlbum(Request $request): Response
     {
         $site = $this->resolveSite($request);
-        $serviceCards = $site->service_content['cards'] ?? [];
-        $page = $this->findPage($site, 'services');
+        $album = ProgressAlbum::findOrFail($request->route('album'));
 
-        return Inertia::render('Site/Services', [
-            ...$this->sharedProps($request, $site),
-            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
-            'page' => $page,
-            'serviceHighlights' => filled($serviceCards) ? $serviceCards : [
-                [
-                    'title' => '代租代管',
-                    'description' => '從招租、簽約到入住後的維護與回報，建立一套穩定的管理流程。',
-                ],
-                [
-                    'title' => '售後維護',
-                    'description' => '延續建築品質的維護節奏，將售後服務納入品牌體驗的一部分。',
-                ],
-                [
-                    'title' => '不動產顧問',
-                    'description' => '整合建案、屋主與資產配置需求，提供更完整的長期規劃建議。',
-                ],
-            ],
-            'latestNews' => $this->newsQuery($site)->limit(3)->get(),
-        ]);
-    }
+        abort_unless($album->site_id === $site->id && $album->is_published, 404);
 
-    public function progress(Request $request): Response
-    {
-        $site = $this->resolveSite($request);
         $authenticatedProjectId = session('progress_project_id');
-        $project = null;
-        $updates = collect();
-        $albums = collect();
+        abort_unless($authenticatedProjectId && $authenticatedProjectId == $album->project_id, 403);
 
-        if ($authenticatedProjectId) {
-            $project = Project::where('site_id', $site->id)->find($authenticatedProjectId);
-            if ($project) {
-                $updates = $project->progressUpdates()
-                    ->where('is_published', true)
-                    ->orderByDesc('reported_at')
-                    ->with('project')
-                    ->get();
+        $album->load('project');
 
-                $albums = ProgressAlbum::where('site_id', $site->id)
-                    ->where('project_id', $project->id)
-                    ->where('is_published', true)
-                    ->whereNotNull('gallery')
-                    ->orderByDesc('reported_at')
-                    ->get();
-            }
-        }
-
-        $page = $this->findPage($site, 'progress');
-
-        return Inertia::render('Site/Progress', [
+        return Inertia::render('Site/ProgressAlbum', [
             ...$this->sharedProps($request, $site),
-            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
-            'page' => $page,
-            'projects' => $this->projectsQuery($site)->get(['id', 'name', 'slug']),
-            'isAuthenticated' => (bool) $project,
-            'selectedProject' => $project,
-            'updates' => $updates,
-            'albums' => $albums,
+            'album' => $album,
         ]);
     }
 
-    public function progressAuth(Request $request)
+    // ── POST handlers（由 dynamicPagePost 呼叫）─────────────
+
+    protected function progressAuth(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'project_id' => 'required|integer',
@@ -245,52 +184,7 @@ class SiteController extends Controller
         return back();
     }
 
-    public function progressAlbum(Request $request): Response
-    {
-        $site = $this->resolveSite($request);
-        $album = ProgressAlbum::findOrFail($request->route('album'));
-
-        // 驗證相簿屬於該站台且已發布
-        abort_unless($album->site_id === $site->id && $album->is_published, 404);
-
-        // 驗證已登入工程進度
-        $authenticatedProjectId = session('progress_project_id');
-        abort_unless($authenticatedProjectId && $authenticatedProjectId == $album->project_id, 403);
-
-        $album->load('project');
-
-        return Inertia::render('Site/ProgressAlbum', [
-            ...$this->sharedProps($request, $site),
-            'album' => $album,
-        ]);
-    }
-
-    public function contact(Request $request): Response
-    {
-        $site = $this->resolveSite($request);
-        $inquiryTypes = $site->contact_content['inquiry_types'] ?? [];
-        $page = $this->findPage($site, 'contact');
-
-        return Inertia::render('Site/Contact', [
-            ...$this->sharedProps($request, $site),
-            'metaDescription' => $this->metaDescription($page?->seo_description, $page?->summary),
-            'page' => $page,
-            'projects' => $this->projectsQuery($site)
-                ->orderByDesc('is_featured')
-                ->orderBy('sort_order')
-                ->get(['id', 'name', 'slug']),
-            'inquiryTypes' => filled($inquiryTypes) ? $inquiryTypes : [
-                '預約看屋',
-                '線上報修',
-                '包租代管',
-                '合作提案',
-                '建議事項',
-                '其他',
-            ],
-        ]);
-    }
-
-    public function submitContact(Request $request): RedirectResponse
+    protected function submitContact(Request $request): RedirectResponse
     {
         $site = $this->resolveSite($request);
 
@@ -333,6 +227,87 @@ class SiteController extends Controller
         return back()->with('success', '已收到您的訊息，我們會盡快與您聯繫。');
     }
 
+    // ── 每個模板的額外 props ─────────────────────
+
+    protected function extraPropsForTemplate(Request $request, Site $site, PageTemplate $template): array
+    {
+        return match ($template) {
+            PageTemplate::Projects => [
+                'projects' => $this->projectsQuery($site)
+                    ->orderByDesc('is_featured')
+                    ->orderByDesc('launch_year')
+                    ->orderBy('sort_order')
+                    ->get(),
+                'statusList' => $site->projectStatuses()->orderBy('sort_order')->get(['id', 'name']),
+            ],
+            PageTemplate::News => [
+                'articles' => $this->newsQuery($site)
+                    ->when(request()->integer('category'), fn ($q, $cat) => $q->where('news_category_id', $cat))
+                    ->paginate(12)
+                    ->withQueryString(),
+                'categories' => $site->newsCategories()->orderBy('sort_order')->get(['id', 'name']),
+                'activeCategory' => request()->integer('category') ?: null,
+            ],
+            PageTemplate::Services => [
+                'serviceHighlights' => filled($site->service_content['cards'] ?? [])
+                    ? $site->service_content['cards']
+                    : [
+                        ['title' => '代租代管', 'description' => '從招租、簽約到入住後的維護與回報，建立一套穩定的管理流程。'],
+                        ['title' => '售後維護', 'description' => '延續建築品質的維護節奏，將售後服務納入品牌體驗的一部分。'],
+                        ['title' => '不動產顧問', 'description' => '整合建案、屋主與資產配置需求，提供更完整的長期規劃建議。'],
+                    ],
+                'latestNews' => $this->newsQuery($site)->limit(3)->get(),
+            ],
+            PageTemplate::Progress => $this->progressProps($site),
+            PageTemplate::Contact => [
+                'projects' => $this->projectsQuery($site)
+                    ->orderByDesc('is_featured')
+                    ->orderBy('sort_order')
+                    ->get(['id', 'name', 'slug']),
+                'inquiryTypes' => filled($site->contact_content['inquiry_types'] ?? [])
+                    ? $site->contact_content['inquiry_types']
+                    : ['預約看屋', '線上報修', '包租代管', '合作提案', '建議事項', '其他'],
+            ],
+            default => [],
+        };
+    }
+
+    protected function progressProps(Site $site): array
+    {
+        $authenticatedProjectId = session('progress_project_id');
+        $project = null;
+        $updates = collect();
+        $albums = collect();
+
+        if ($authenticatedProjectId) {
+            $project = Project::where('site_id', $site->id)->find($authenticatedProjectId);
+            if ($project) {
+                $updates = $project->progressUpdates()
+                    ->where('is_published', true)
+                    ->orderByDesc('reported_at')
+                    ->with('project')
+                    ->get();
+
+                $albums = ProgressAlbum::where('site_id', $site->id)
+                    ->where('project_id', $project->id)
+                    ->where('is_published', true)
+                    ->whereNotNull('gallery')
+                    ->orderByDesc('reported_at')
+                    ->get();
+            }
+        }
+
+        return [
+            'projects' => $this->projectsQuery($site)->get(['id', 'name', 'slug']),
+            'isAuthenticated' => (bool) $project,
+            'selectedProject' => $project,
+            'updates' => $updates,
+            'albums' => $albums,
+        ];
+    }
+
+    // ── Shared ──────────────────────────────────
+
     protected function sharedProps(Request $request, Site $site): array
     {
         return [
@@ -340,22 +315,41 @@ class SiteController extends Controller
             'currentUrl' => $request->fullUrl(),
             'baseUrl' => rtrim($request->schemeAndHttpHost(), '/'),
             'navigation' => $this->navigationFor($request, $site),
-            'routeMap' => [
-                'home' => $this->routeFor($request, $site, 'home'),
-                'about' => $this->routeFor($request, $site, 'about'),
-                'projects' => $this->routeFor($request, $site, 'projects'),
-                'news' => $this->routeFor($request, $site, 'news'),
-                'services' => $this->routeFor($request, $site, 'services'),
-                'progress' => $this->routeFor($request, $site, 'progress'),
-                'contact' => $this->routeFor($request, $site, 'contact'),
-                'contactSubmit' => $this->routeFor($request, $site, 'contact.submit'),
-                'progressAuth' => $this->routeFor($request, $site, 'progress.auth'),
-                'login' => route('login'),
-                'preview' => route('site.preview', $site),
-            ],
+            'routeMap' => $this->buildRouteMap($request, $site),
             'canonicalUrl' => $this->canonicalUrl($request, $site),
             'isPreview' => $this->isPreview($request),
         ];
+    }
+
+    protected function buildRouteMap(Request $request, Site $site): array
+    {
+        $base = $this->isPreview($request) ? '/preview/' . $site->slug : '';
+
+        // 查詢該站所有已發布頁面的 page_type => slug
+        $pages = Page::where('site_id', $site->id)
+            ->where('is_published', true)
+            ->orderBy('sort_order')
+            ->get(['page_type', 'slug'])
+            ->groupBy(fn ($p) => $p->page_type->value);
+
+        $map = [
+            'home' => $base . '/',
+            'login' => route('login'),
+            'preview' => route('site.preview', $site),
+        ];
+
+        // 每個模板取 sort_order 最小（第一筆）的 slug
+        foreach (PageTemplate::cases() as $template) {
+            if ($template === PageTemplate::Home) continue;
+            $slug = $pages->get($template->value)?->first()?->slug ?? $template->value;
+            $map[$template->value] = $base . '/' . $slug;
+        }
+
+        // POST 路由與對應頁面同 URL
+        $map['contactSubmit'] = $map['contact'] ?? $base . '/contact';
+        $map['progressAuth'] = $map['progress'] ?? $base . '/progress';
+
+        return $map;
     }
 
     protected function navigationFor(Request $request, Site $site): array
@@ -391,36 +385,18 @@ class SiteController extends Controller
     protected function navigationUrl(Request $request, Site $site, $item): string
     {
         if ($item->page) {
-            return match ($item->page->slug) {
-                'home' => $this->routeFor($request, $site, 'home'),
-                'about' => $this->routeFor($request, $site, 'about'),
-                'projects' => $this->routeFor($request, $site, 'projects'),
-                'news' => $this->routeFor($request, $site, 'news'),
-                'services' => $this->routeFor($request, $site, 'services'),
-                'progress' => $this->routeFor($request, $site, 'progress'),
-                'contact' => $this->routeFor($request, $site, 'contact'),
-                default => $item->url ?: '#',
-            };
+            $base = $this->isPreview($request) ? '/preview/' . $site->slug : '';
+            if ($item->page->page_type === PageTemplate::Home) {
+                return $base . '/';
+            }
+            return $base . '/' . $item->page->slug;
         }
 
         if ($this->isPreview($request) && str_starts_with((string) $item->url, '/')) {
-            return rtrim(route('site.preview', $site), '/').$item->url;
+            return rtrim(route('site.preview', $site), '/') . $item->url;
         }
 
         return $item->url ?: '#';
-    }
-
-    protected function routeFor(Request $request, Site $site, string $page, array $parameters = []): string
-    {
-        $name = match (true) {
-            $page === 'home' && $this->isPreview($request) => 'site.preview',
-            $page === 'home' => 'site.home',
-            $this->isPreview($request) => "site.preview.{$page}",
-            default => "site.{$page}",
-        };
-        $base = $this->isPreview($request) ? ['site' => $site] : [];
-
-        return route($name, [...$base, ...$parameters]);
     }
 
     protected function canonicalUrl(Request $request, Site $site): string
@@ -462,12 +438,13 @@ class SiteController extends Controller
         return $request->route()?->named('site.preview*') ?? false;
     }
 
-    protected function findPage(Site $site, string $slug): ?Page
+    protected function findPageByTemplate(Site $site, PageTemplate $template): ?Page
     {
         return Page::query()
             ->where('site_id', $site->id)
-            ->where('slug', $slug)
+            ->where('page_type', $template->value)
             ->where('is_published', true)
+            ->orderBy('sort_order')
             ->first();
     }
 

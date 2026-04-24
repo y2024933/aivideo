@@ -45,9 +45,7 @@ function filterByCategory(categoryId) {
     <SiteLayout :title="page?.title || '最新消息'" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
         <section class="mx-auto max-w-7xl px-6 py-20">
             <h1 class="text-5xl font-semibold">{{ page?.title || '最新消息' }}</h1>
-            <p class="mt-8 max-w-3xl text-lg leading-8 text-stone-600">
-                {{ page?.summary }}
-            </p>
+            <div v-if="page?.content" class="mt-8 max-w-none prose prose-stone prose-p:my-0 prose-p:leading-8" v-html="page.content" />
 
             <!-- 分類 tab -->
             <div v-if="categories.length" class="mt-8 flex flex-wrap gap-3">

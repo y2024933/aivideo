@@ -47,7 +47,11 @@
             "@php artisan filament:upgrade"
         ],
         "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
+            "sh patches/fix-tiptap-textalign.sh"
+        ],
+        "post-install-cmd": [
+            "sh patches/fix-tiptap-textalign.sh"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
