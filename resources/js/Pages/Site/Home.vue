@@ -53,7 +53,7 @@ const heroBg = computed(() => mediaUrl(props.site.hero_content?.background_image
 </script>
 
 <template>
-    <SiteLayout :title="site.seo_defaults?.title || site.name" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="{ meta, jsonLdScript }">
+    <SiteLayout :title="site.seo_defaults?.title || site.name" :site="site" :navigation="navigation" :route-map="routeMap" :is-preview="isPreview" :seo="seo">
 
         <!-- ===================================================================== -->
         <!-- CLASSIC THEME — 5 Section 全屏式首頁                                    -->
