@@ -29,6 +29,9 @@ class ListNewsArticles extends ListRecords
                                 ? Site::pluck('name', 'id')
                                 : $user?->sites()->pluck('name', 'sites.id') ?? [];
                         })
+                        ->default(fn () => auth()->user()?->isSuperAdmin() ? null : auth()->user()?->sites()->value('sites.id'))
+                        ->visible(fn () => auth()->user()?->isSuperAdmin())
+                        ->dehydrated(true)
                         ->required()
                         ->reactive()
                         ->afterStateUpdated(function (callable $set, $state) {
@@ -46,7 +49,14 @@ class ListNewsArticles extends ListRecords
                             TextInput::make('sort_order')->label('排序')->numeric()->default(0),
                         ])
                         ->columns(2)
-                        ->default([])
+                        ->default(function () {
+                            $user = auth()->user();
+                            if ($user?->isSuperAdmin()) return [];
+                            $siteId = $user?->sites()->value('sites.id');
+                            if (! $siteId) return [];
+                            return \App\Models\NewsCategory::where('site_id', $siteId)
+                                ->orderBy('sort_order')->get(['id', 'name', 'sort_order'])->toArray();
+                        })
                         ->defaultItems(0)
                         ->reorderable(false)
                         ->visible(fn (callable $get) => filled($get('site_id'))),
@@ -58,11 +68,18 @@ class ListNewsArticles extends ListRecords
                 ->modalFooterActionsAlignment('center')
                 ->action(function (array $data) {
                     $siteId = $data['site_id'];
+                    $user = auth()->user();
+
+                    if (! $user->isSuperAdmin() && ! $user->sites()->where('sites.id', $siteId)->exists()) {
+                        \Filament\Notifications\Notification::make()->danger()->title('無權限操作此站台')->send();
+                        return;
+                    }
+
                     $existingIds = [];
 
                     foreach ($data['categories'] as $item) {
                         if (! empty($item['id'])) {
-                            \App\Models\NewsCategory::where('id', $item['id'])->update([
+                            \App\Models\NewsCategory::where('id', $item['id'])->where('site_id', $siteId)->update([
                                 'name' => $item['name'],
                                 'slug' => \Illuminate\Support\Str::slug($item['name']),
                                 'sort_order' => $item['sort_order'] ?? 0,

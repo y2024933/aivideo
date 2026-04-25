@@ -106,7 +106,14 @@ class NewsArticleResource extends Resource
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 Tables\Filters\SelectFilter::make('news_category_id')
                     ->label('分類')
-                    ->relationship('newsCategory', 'name'),
+                    ->options(function () {
+                        $user = auth()->user();
+                        $query = \App\Models\NewsCategory::query();
+                        if (! $user?->isSuperAdmin()) {
+                            $query->whereIn('site_id', $user?->sites()->pluck('sites.id') ?? []);
+                        }
+                        return $query->orderBy('sort_order')->pluck('name', 'id')->all();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
