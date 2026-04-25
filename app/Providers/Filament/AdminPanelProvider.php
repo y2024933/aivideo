@@ -31,15 +31,6 @@ class AdminPanelProvider extends PanelProvider
             ->profile(\App\Filament\Pages\EditProfile::class)
             ->brandName('多站台管理系統')
             ->favicon(asset('favicon.svg'))
-            ->bootUsing(function (Panel $panel) {
-                $user = auth()->user();
-                if ($user && ! $user->isSuperAdmin()) {
-                    $site = $user->sites()->first();
-                    if ($site) {
-                        $panel->brandName($site->name);
-                    }
-                }
-            })
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -74,6 +65,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\SetFilamentBrandName::class,
             ]);
     }
 }

@@ -5,11 +5,11 @@
         @if ($user->isSuperAdmin())
             <span>權限：超級管理員</span>
             <span>·</span>
-            <span>網站範圍：全部站台</span>
+            <span>網站：全部站台</span>
         @else
             <span>權限：站台管理員</span>
             <span>·</span>
-            <span>網站範圍：{{ $user->sites->pluck('name')->join(' / ') }}</span>
+            <span>網站：{{ $user->sites->pluck('name')->join(' / ') }}</span>
         @endif
     </div>
 @endif
