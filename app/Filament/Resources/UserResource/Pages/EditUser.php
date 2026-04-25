@@ -53,5 +53,13 @@ class EditUser extends BaseEditRecord
         if ($role) {
             $this->record->syncRoles([$role]);
         }
+
+        // 一般帳號 sync 單一站台；升級超級管理員時清除站台綁定
+        $siteId = $this->data['site_id_single'] ?? null;
+        if ($role === 'site_admin' && $siteId) {
+            $this->record->sites()->sync([$siteId]);
+        } elseif ($role === 'super_admin') {
+            $this->record->sites()->detach();
+        }
     }
 }

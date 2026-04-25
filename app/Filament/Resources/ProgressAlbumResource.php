@@ -117,9 +117,15 @@ class ProgressAlbumResource extends Resource
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 SelectFilter::make('project_id')
                     ->label('建案')
-                    ->relationship('project', 'name')
-                    ->searchable()
-                    ->preload(),
+                    ->options(function () {
+                        $user = auth()->user();
+                        $query = \App\Models\Project::query();
+                        if (! $user?->isSuperAdmin()) {
+                            $query->whereIn('site_id', $user?->sites()->pluck('sites.id') ?? []);
+                        }
+                        return $query->orderBy('name')->pluck('name', 'id')->all();
+                    })
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

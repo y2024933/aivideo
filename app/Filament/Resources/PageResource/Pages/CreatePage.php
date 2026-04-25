@@ -13,7 +13,12 @@ class CreatePage extends CreateRecord
     {
         $user = auth()->user();
 
-        $data['site_id'] ??= $user?->sites()->value('sites.id');
+        // 一般帳號強制使用所屬站台，防止竄改
+        if (! $user->isSuperAdmin()) {
+            $data['site_id'] = $user->sites()->value('sites.id');
+        } else {
+            $data['site_id'] ??= $user->sites()->value('sites.id');
+        }
         $data['created_by'] = $user?->id;
         $data['updated_by'] = $user?->id;
 

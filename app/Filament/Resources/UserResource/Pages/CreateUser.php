@@ -15,5 +15,11 @@ class CreateUser extends CreateRecord
         if ($role) {
             $this->record->syncRoles([$role]);
         }
+
+        // 一般帳號手動 sync 單一站台
+        $siteId = $this->data['site_id_single'] ?? null;
+        if ($role === 'site_admin' && $siteId) {
+            $this->record->sites()->sync([$siteId]);
+        }
     }
 }

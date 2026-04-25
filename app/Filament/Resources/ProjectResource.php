@@ -97,13 +97,25 @@ class ProjectResource extends Resource
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
                 Tables\Filters\SelectFilter::make('name')
                     ->label('建案名稱')
-                    ->options(fn () => \App\Models\Project::query()
-                        ->pluck('name', 'name')
-                        ->toArray())
+                    ->options(function () {
+                        $user = auth()->user();
+                        $query = \App\Models\Project::query();
+                        if (! $user?->isSuperAdmin()) {
+                            $query->whereIn('site_id', $user?->sites()->pluck('sites.id') ?? []);
+                        }
+                        return $query->pluck('name', 'name')->toArray();
+                    })
                     ->searchable(),
                 Tables\Filters\SelectFilter::make('project_status_id')
                     ->label('作品類型')
-                    ->relationship('projectStatus', 'name'),
+                    ->options(function () {
+                        $user = auth()->user();
+                        $query = \App\Models\ProjectStatus::query();
+                        if (! $user?->isSuperAdmin()) {
+                            $query->whereIn('site_id', $user?->sites()->pluck('sites.id') ?? []);
+                        }
+                        return $query->orderBy('sort_order')->pluck('name', 'id')->all();
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->link(),

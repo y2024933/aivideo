@@ -11,8 +11,11 @@ class CreateProgressAlbum extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        if (empty($data['site_id'])) {
-            $data['site_id'] = auth()->user()?->sites()->value('sites.id');
+        // 一般帳號強制使用所屬站台，防止竄改
+        if (! auth()->user()->isSuperAdmin()) {
+            $data['site_id'] = auth()->user()->sites()->value('sites.id');
+        } else {
+            $data['site_id'] ??= auth()->user()->sites()->value('sites.id');
         }
         return $data;
     }

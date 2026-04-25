@@ -55,12 +55,18 @@ class UserResource extends Resource
                     ->afterStateHydrated(fn (Select $component, ?User $record) => $component->state($record?->getRoleNames()->first()))
                     ->dehydrated(false),
             ]),
-            Select::make('sites')
+            // 一般帳號只能綁定一個站台，用手動 Select + sync 處理 belongsToMany
+            Select::make('site_id_single')
                 ->label('對應站台')
-                ->relationship('sites', 'name')
-                ->multiple()
+                ->options(\App\Models\Site::orderBy('name')->pluck('name', 'id')->all())
                 ->searchable()
-                ->preload()
+                ->required()
+                ->afterStateHydrated(function (Select $component, ?User $record) {
+                    if ($record) {
+                        $component->state($record->sites()->value('sites.id'));
+                    }
+                })
+                ->dehydrated(false)
                 ->extraAttributes(['class' => 'line-target-select'])
                 ->columnSpanFull()
                 ->visible(fn (\Filament\Forms\Get $get) => $get('role') === 'site_admin'),
