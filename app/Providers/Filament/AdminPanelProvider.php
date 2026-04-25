@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->profile(\App\Filament\Pages\EditProfile::class)
-            ->brandName('多站台管理系統')
+            ->brandName('站台管理系統')
             ->favicon(asset('favicon.svg'))
             ->colors([
                 'primary' => Color::Amber,
