@@ -73,11 +73,6 @@ function statusColor(status) {
         <div v-if="store.current">
             <p class="text-sm text-gray-500 mb-6">審核 {{ store.shots.length }} 張場景圖</p>
 
-            <!-- 生成按鈕 -->
-            <div v-if="canGenerate && store.shots.every(s => !s.image_url)" class="text-center py-12">
-                <ActionButton :loading="store.loading" @click="generate">生成場景圖</ActionButton>
-            </div>
-
             <!-- 3x3 Grid -->
             <div v-if="store.shots.length" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
                 <div
@@ -107,12 +102,12 @@ function statusColor(status) {
                         </div>
                         <p v-if="shot.subtitle" class="text-xs text-gray-400 mt-1 truncate">{{ shot.subtitle }}</p>
                         <button
-                            v-if="shot.image_url || shot.image_status === 'failed'"
+                            v-if="shot.image_status !== 'processing'"
                             :disabled="regeneratingScenes.has(shot.id)"
                             class="mt-1 w-full text-xs py-1 rounded border border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             @click="regenerateScene(shot.id)"
                         >
-                            {{ regeneratingScenes.has(shot.id) ? '重跑中...' : '重跑' }}
+                            {{ regeneratingScenes.has(shot.id) ? '生成中...' : (shot.image_url ? '重跑' : '生成') }}
                         </button>
                     </div>
                 </div>
