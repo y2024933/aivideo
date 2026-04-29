@@ -80,7 +80,7 @@ final class BuildingCaseController
         try {
             $results = $imageGenerator->generateCharacterPreviews(
                 $buildingCase->character_dna ?? $buildingCase->name,
-                4
+                1
             );
         } catch (\Throwable $e) {
             Log::error('[BuildingCaseController::generateCharacters] 角色生成失敗', ['exception' => $e]);

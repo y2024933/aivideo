@@ -9,6 +9,7 @@ use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
     Sanctum::actingAs(User::factory()->create());
+    config(['services.use_real_apis' => false]); // 測試強制用 stub
 });
 
 it('completes the full stub flow: create → generate characters → approve', function () {
@@ -31,7 +32,7 @@ it('completes the full stub flow: create → generate characters → approve', f
     $response->assertStatus(200);
 
     $options = $response->json('character_options');
-    expect($options)->toHaveCount(4);
+    expect($options)->toHaveCount(1);
     expect($options[0]['image_url'])->toContain('placehold.co');
 
     // 3. 確認狀態為待審核

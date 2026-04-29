@@ -24,7 +24,7 @@ it('generates characters and transitions status correctly', function () {
     $response = $this->postJson("/api/cases/{$case->id}/generate-characters");
 
     $response->assertStatus(200);
-    $response->assertJsonCount(4, 'character_options');
+    $response->assertJsonCount(1, 'character_options');
 
     $case->refresh();
     expect($case->status)->toBe(CaseStatus::CharacterPendingReview);

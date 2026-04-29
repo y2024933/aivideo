@@ -57,7 +57,7 @@ function next() {
             </div>
 
             <!-- 角色選擇 -->
-            <div v-else-if="isPendingReview || canProceed" class="grid grid-cols-2 gap-4">
+            <div v-else-if="isPendingReview || canProceed" class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
                 <div
                     v-for="opt in store.characterOptions"
                     :key="opt.id"
