@@ -9,7 +9,7 @@ use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
     Sanctum::actingAs(User::factory()->create());
-    config(['services.use_real_apis' => false]); // 測試強制用 stub
+    app()->bind(\App\Services\Contracts\ImageGeneratorContract::class, fn () => new \App\Services\Stubs\StubImageGenerator());
 });
 
 it('completes the full stub flow: create → generate characters → approve', function () {

@@ -3,7 +3,7 @@
 return [
 
     // API 模式切換：false = stub（開發），true = 真實 API
-    'use_real_apis' => env('APP_USE_REAL_APIS', false),
+    'use_real_apis' => filter_var(env('APP_USE_REAL_APIS', false), FILTER_VALIDATE_BOOLEAN),
     'api_budget_usd' => env('APP_API_BUDGET_USD', 10),
 
     // fal.ai (Flux Kontext 圖片生成)

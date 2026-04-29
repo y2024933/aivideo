@@ -20,6 +20,15 @@ uses(
     Tests\TestCase::class,
 )->in('Unit/Services');
 
+// 測試環境強制用 stub，不打真實 API
+beforeEach(function () {
+    config(['services.use_real_apis' => false]);
+    app()->bind(\App\Services\Contracts\ImageGeneratorContract::class, fn () => new \App\Services\Stubs\StubImageGenerator());
+    app()->bind(\App\Services\Contracts\VideoGeneratorContract::class, fn () => new \App\Services\Stubs\StubVideoGenerator());
+    app()->bind(\App\Services\Contracts\TtsContract::class, fn () => new \App\Services\Stubs\StubTts());
+    app()->bind(\App\Services\Contracts\VideoEditorContract::class, fn () => new \App\Services\Stubs\StubVideoEditor());
+});
+
 /*
 |--------------------------------------------------------------------------
 | Expectations
