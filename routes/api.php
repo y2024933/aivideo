@@ -1,12 +1,17 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BuildingCaseController;
 use Illuminate\Support\Facades\Route;
 
-// 不需認證的路由
 Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
-// 需要認證的路由
+// Auth
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
+
+// Cases（需認證）
 Route::middleware('auth:sanctum')->prefix('cases')->group(function () {
     Route::get('/', [BuildingCaseController::class, 'index']);
     Route::post('/', [BuildingCaseController::class, 'store']);

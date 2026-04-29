@@ -1,66 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AI Video — 建案影片自動化工具
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Operator 填表 + 4 次核准，系統自動生成圖片、動畫、配音、剪接成品。
 
-## About Laravel
+## 技術棧
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **後端**: Laravel 10 + PHP 8.3
+- **前端**: Vue 3 SPA + Tailwind CSS
+- **Queue**: Redis + Horizon
+- **DB**: MySQL 8
+- **容器**: Docker Compose
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 外部服務
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| 服務 | 用途 | 費用 |
+|------|------|------|
+| fal.ai Flux Kontext | 圖片生成（角色一致性） | ~$0.04/張 |
+| Kling AI API | 圖轉影片 | ~$0.21/5s |
+| Azure TTS | 配音（zh-TW 台灣腔） | 免費 50 萬字/月 |
+| Remotion Lambda | 影片自動剪接 | ~$0.05/支 |
 
-## Learning Laravel
+**每支影片約 $4.8，無月費。**
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 快速開始
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+# 1. Clone
+git clone https://github.com/y2024933/aivideo.git
+cd aivideo
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+# 2. 複製環境變數
+cp .env.example .env
+cp .env.example .env.docker
 
-## Laravel Sponsors
+# 3. 啟動 Docker
+docker compose up -d
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# 4. 安裝依賴 + 遷移 + Seed
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
 
-### Premium Partners
+# 5. 安裝前端
+docker compose exec vite npm install
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+# 6. 開啟瀏覽器
+open http://localhost:8010
+```
 
-## Contributing
+## 預設帳號
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```
+Email: admin@aivideo.local
+密碼:  password
+```
 
-## Code of Conduct
+## Docker 服務
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| 服務 | Port | 用途 |
+|------|------|------|
+| web | 8010 | Nginx |
+| vite | 5174 | HMR dev server |
+| mysql | 3308 | MySQL |
+| redis | 6380 | Redis |
+| phpmyadmin | 8083 | DB GUI |
 
-## Security Vulnerabilities
+## API 路由
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```
+POST   /api/login                              登入
+POST   /api/logout                             登出
+GET    /api/user                               取得當前用戶
 
-## License
+GET    /api/cases                              建案列表
+POST   /api/cases                              建立建案
+GET    /api/cases/{id}                         查看建案
+POST   /api/cases/{id}/generate-characters     生成角色預覽
+POST   /api/cases/{id}/approve-character       核准角色
+POST   /api/cases/{id}/generate-scenes         生成場景圖
+POST   /api/cases/{id}/approve-images          核准圖片 → 開始生成動畫
+POST   /api/cases/{id}/generate-voiceover      生成配音
+POST   /api/cases/{id}/render-video            渲染最終影片
+GET    /api/health                             健康檢查
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Wizard 流程
+
+```
+1. 填表 + 貼腳本  →  建立建案 + shots
+2. 生成角色預覽    →  Flux Kontext 產 4 張 → 挑 1 張核准
+3. 確認腳本       →  檢視分鏡內容
+4. 生成場景圖     →  Flux Kontext 用核准角色 → 9 張 → 核准
+5. 生成動畫+配音  →  Kling API + Azure TTS → 自動輪詢
+6. 渲染成品       →  Remotion Lambda 自動剪接 → 下載
+```
+
+## 環境變數
+
+```bash
+# API 模式（false = stub 開發用）
+APP_USE_REAL_APIS=false
+
+# fal.ai
+FAL_API_KEY=
+
+# Kling AI
+KLING_ACCESS_KEY=
+KLING_SECRET_KEY=
+
+# Azure TTS
+AZURE_TTS_KEY=
+AZURE_TTS_REGION=eastasia
+
+# AWS (Remotion Lambda)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+REMOTION_FUNCTION_NAME=
+REMOTION_SERVE_URL=
+REMOTION_REGION=us-east-1
+```
+
+## 測試
+
+```bash
+docker compose exec app ./vendor/bin/pest
+```
+
+## 參考文件
+
+- `09_腳本參考/CLAUDE_CODE_BRIEF.md` — 完整專案 Brief
+- `09_腳本參考/07_松韻苑_修正版腳本_v2.md` — 範例腳本
+- `09_腳本參考/09_接案SOP_v2.0_踩坑筆記.md` — 踩坑筆記
