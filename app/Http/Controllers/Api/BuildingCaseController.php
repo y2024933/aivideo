@@ -8,6 +8,7 @@ use App\Enums\CaseStatus;
 use App\Jobs\PollKlingVideoJob;
 use App\Models\BuildingCase;
 use App\Services\Contracts\ImageGeneratorContract;
+use App\Services\Contracts\TtsContract;
 use App\Services\Contracts\VideoGeneratorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -172,5 +173,35 @@ final class BuildingCaseController
         $buildingCase->transitionTo(CaseStatus::ProducingFinal, 'system');
 
         return response()->json($buildingCase->load('shots'));
+    }
+
+    public function generateVoiceover(BuildingCase $buildingCase, TtsContract $tts): JsonResponse
+    {
+        $shots = $buildingCase->shots()->orderBy('shot_order')->get();
+        $fullText = $shots->pluck('voiceover_text')->filter()->implode("\n");
+
+        if (blank($fullText)) {
+            return response()->json(['error' => '此建案無配音稿文字'], 422);
+        }
+
+        $voiceName = 'zh-TW-HsiaoChenNeural';
+
+        try {
+            $result = $tts->synthesize($fullText, $voiceName);
+        } catch (\Throwable $e) {
+            Log::error('[BuildingCaseController::generateVoiceover] 配音生成失敗', ['exception' => $e]);
+
+            return response()->json(['error' => '配音生成失敗'], 500);
+        }
+
+        $voiceover = $buildingCase->voiceovers()->create([
+            'text' => $fullText,
+            'voice_id' => $voiceName,
+            'audio_url' => $result['audio_url'],
+            'duration_seconds' => $result['duration_seconds'],
+            'status' => 'done',
+        ]);
+
+        return response()->json($voiceover, 201);
     }
 }
