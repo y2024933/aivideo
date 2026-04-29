@@ -9,6 +9,7 @@ use App\Models\BuildingCase;
 use App\Services\Contracts\ImageGeneratorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 final class BuildingCaseController
 {
@@ -43,10 +44,17 @@ final class BuildingCaseController
     {
         $buildingCase->transitionTo(CaseStatus::CharacterGenerating, 'operator');
 
-        $results = $imageGenerator->generateCharacterPreviews(
-            $buildingCase->character_dna ?? $buildingCase->name,
-            4
-        );
+        try {
+            $results = $imageGenerator->generateCharacterPreviews(
+                $buildingCase->character_dna ?? $buildingCase->name,
+                4
+            );
+        } catch (\Throwable $e) {
+            Log::error('[BuildingCaseController::generateCharacters] 角色生成失敗', ['exception' => $e]);
+            $buildingCase->transitionTo(CaseStatus::CharacterFailed, 'system', $e->getMessage());
+
+            return response()->json(['error' => '角色生成失敗'], 500);
+        }
 
         foreach ($results as $result) {
             $buildingCase->characterOptions()->create([
@@ -60,6 +68,60 @@ final class BuildingCaseController
         $buildingCase->transitionTo(CaseStatus::CharacterPendingReview, 'system');
 
         return response()->json($buildingCase->load('characterOptions'));
+    }
+
+    public function generateScenes(BuildingCase $buildingCase, ImageGeneratorContract $imageGenerator): JsonResponse
+    {
+        $approvedCharacter = $buildingCase->approvedCharacter;
+
+        if (! $approvedCharacter?->image_url) {
+            return response()->json(['error' => '尚未核准角色或角色無圖片'], 422);
+        }
+
+        $buildingCase->transitionTo(CaseStatus::ImagesGenerating, 'operator');
+
+        $shots = $buildingCase->shots()->where('image_status', 'pending')->get();
+        $costPerImage = (float) config('services.fal.cost_per_image');
+        $totalCost = 0.0;
+        $hasFailure = false;
+
+        foreach ($shots as $shot) {
+            try {
+                $result = $imageGenerator->generateSceneImage(
+                    $shot->flux_prompt,
+                    $approvedCharacter->image_url
+                );
+
+                $shot->update([
+                    'image_url' => $result['image_url'],
+                    'image_request_id' => $result['request_id'],
+                    'image_status' => $result['image_url'] ? 'done' : 'failed',
+                    'image_cost_usd' => $costPerImage,
+                ]);
+
+                $totalCost += $costPerImage;
+            } catch (\Throwable $e) {
+                Log::error('[BuildingCaseController::generateScenes] 場景圖生成失敗', [
+                    'shot_id' => $shot->shot_id,
+                    'exception' => $e,
+                ]);
+
+                $shot->update([
+                    'image_status' => 'failed',
+                    'image_retry_count' => $shot->image_retry_count + 1,
+                ]);
+                $hasFailure = true;
+            }
+        }
+
+        if ($totalCost > 0) {
+            $buildingCase->addCost($totalCost);
+        }
+
+        $newStatus = $hasFailure ? CaseStatus::ImagesPartial : CaseStatus::ImagesPendingReview;
+        $buildingCase->transitionTo($newStatus, 'system');
+
+        return response()->json($buildingCase->load('shots'));
     }
 
     public function approveCharacter(BuildingCase $buildingCase, Request $request): JsonResponse

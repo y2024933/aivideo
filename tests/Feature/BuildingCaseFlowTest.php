@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\CaseStatus;
 use App\Models\BuildingCase;
+use App\Models\User;
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    Sanctum::actingAs(User::factory()->create());
+});
 
 it('completes the full stub flow: create → generate characters → approve', function () {
     // 1. 建立建案

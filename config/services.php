@@ -9,6 +9,8 @@ return [
     // fal.ai (Flux Kontext 圖片生成)
     'fal' => [
         'key' => env('FAL_API_KEY'),
+        'cost_per_image' => (float) env('FAL_COST_PER_IMAGE', 0.05),
+        'poll_interval' => (int) env('FAL_POLL_INTERVAL', 3),
     ],
 
     // Kling AI (影片生成)
