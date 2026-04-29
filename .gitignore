@@ -2,6 +2,7 @@
 /vendor
 /public/hot
 /public/storage
+/public/build
 /storage/*.key
 .vite
 .env
@@ -9,11 +10,8 @@
 .env.docker
 .env.production
 .phpunit.result.cache
-Homestead.json
-Homestead.yaml
 npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
 .DS_Store
-/multisite-cms

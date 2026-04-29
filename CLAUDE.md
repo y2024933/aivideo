@@ -6,64 +6,78 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **使用繁體中文回覆**。
 - **簡潔高效的程式碼**：優先用簡潔寫法，一行能解決的不要拆成多行，避免不必要的中間變數。
-- **維持頁面風格一致**：所有頁面共用相同的 header/footer/nav 結構，修改時需同步所有 `.html` 檔。
-- **不破壞 RWD**：任何樣式修改都要確認手機版與桌面版的顯示效果。
+- `declare(strict_types=1)` 在每個 PHP 檔案頂部。
+- `final class` 除非有繼承需求。
+- Vue: Composition API with `<script setup>`。
 
 ## 專案概覽
 
-泉宇建設（CHYUAN YEU）/ 承岳建築 形象網站。純靜態站，無框架、無建置工具。
+建案 AI 影片自動化工具。Operator 填表 + 4 次 checkpoint 核准，系統自動生成圖片、動畫、配音、剪接成品。
 
-- 語言：HTML5、CSS3、原生 JavaScript
-- 字型：Noto Serif TC + Manrope（Google Fonts）
-- 架構：多頁式（非 SPA）
+- 後端：Laravel 10 + PHP 8.3
+- 前端：Vue 3 SPA（非 Inertia）+ Tailwind CSS + Headless UI
+- Queue：Redis + Horizon
+- WebSocket：Reverb + Echo
+- DB：MySQL 8（Docker）
+- 測試：Pest
 
-## 檔案結構
+## 架構
 
 ```
-index.html          # 首頁
-about.html          # 關於我們
-projects.html       # 建案作品
-progress.html       # 工程進度
-news.html           # 最新消息
-contact.html        # 聯絡我們
-assets/
-  css/style.css     # 全站樣式
-  js/main.js        # 全站互動邏輯
-  media/            # 影片、圖片素材
+app/
+  Enums/CaseStatus.php          # 建案狀態機
+  Models/                        # BuildingCase, Shot, CharacterOption, Voiceover, CaseStatusHistory
+  Services/
+    Contracts/                   # ImageGeneratorContract, VideoGeneratorContract, TtsContract, VideoEditorContract
+    Stubs/                       # Stub 實作（開發用）
+    FalKontextImageGenerator.php # fal.ai Flux Kontext（圖片）
+    KlingVideoGenerator.php      # Kling API（動畫）
+    AzureTts.php                 # Azure TTS（配音，zh-TW）
+    RemotionVideoEditor.php      # Remotion Lambda（剪接）
+  Jobs/                          # 異步任務
+  Http/Controllers/Api/          # API endpoints
+resources/
+  js/
+    App.vue                      # SPA root
+    stores/                      # Pinia stores
+    pages/                       # Wizard 頁面
+docker/                          # PHP + Nginx + Docker configs
+09_腳本參考/                      # 範例腳本、Review 報告、SOP
 ```
 
-## 技術注意事項
+## Docker 環境
 
-### 共用元件同步
+```bash
+docker compose up -d              # 啟動所有服務
+docker compose exec app php artisan ...  # 執行 artisan 指令
+docker compose exec app ./vendor/bin/pest  # 跑測試
+```
 
-Header、Footer、Navigation 直接寫在每個 HTML 檔中（無 template engine），修改導覽列或頁尾時必須同步更新所有 6 個 HTML 檔。
+| 服務 | Port | 用途 |
+|------|------|------|
+| web | 8010 | Nginx |
+| vite | 5174 | HMR dev server |
+| mysql | 3308 | MySQL |
+| redis | 6380 | Redis |
+| phpmyadmin | 8083 | DB GUI |
 
-### CSS 慣例
+## API 切換
 
-- 單一 `style.css` 管理全站樣式
-- 使用語意化 class 命名（如 `site-header`、`home-header-overlay`）
-- RWD 以 media query 實作
+`APP_USE_REAL_APIS=false`（預設）使用 Stub，不呼叫真實 API。
+`APP_USE_REAL_APIS=true` 時呼叫真實 API（需設定對應 key）。
 
-### JavaScript 慣例
+## 外部服務
 
-- 單一 `main.js` 管理全站互動
-- 原生 JS，不依賴 jQuery 或其他函式庫
-- 漢堡選單使用 `menu-trigger` button 控制
+| 服務 | 用途 | 費用 |
+|------|------|------|
+| fal.ai Flux Kontext | 圖片生成（角色一致性） | $0.04/張 |
+| Kling API V2.5 Turbo | 圖轉影片 | $0.21/5s |
+| Azure TTS | 配音（zh-TW 台灣腔） | 免費 50 萬字/月 |
+| Remotion Lambda | 影片自動剪接 | ~$0.05/支 |
 
-### 註解語言
+## 參考文件
 
-- class / id / 變數名：英文
-- 註解說明、文案內容：繁體中文
-
-## Agent 分工規則
-
-- **planner 規劃時**：若任務涉及前端畫面（HTML/CSS/JS 頁面新增或修改），必須派給 **小前**（executor agent，subagent_type=executor）處理實際的程式碼撰寫與修改。
-- planner 負責分析需求、設計方案；小前負責根據方案執行前端程式碼的編寫。
-
-## 參考文件（不自動載入，需要時 Read）
-
-- `docs/workflow-rules.md` — 需求分析流程、修改建議原則
-- `docs/review-rules.md` — Review 檢查清單
-- `docs/code-style-rules.md` — 命名規範、HTML/CSS/JS 風格
-- `docs/maintenance-rules.md` — 文件維護、FAQ、踩坑紀錄
-- `docs/commit-rules.md` — Commit 訊息格式與範例
+- `09_腳本參考/CLAUDE_CODE_BRIEF.md` — 完整專案 Brief
+- `09_腳本參考/02_Reviewers.md` — 4 位 Reviewer 系統 prompt
+- `09_腳本參考/07_松韻苑_修正版腳本_v2.md` — 範例腳本
+- `09_腳本參考/09_接案SOP_v2.0_踩坑筆記.md` — 踩坑筆記

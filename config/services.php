@@ -2,29 +2,35 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
+    // API 模式切換：false = stub（開發），true = 真實 API
+    'use_real_apis' => env('APP_USE_REAL_APIS', false),
+    'api_budget_usd' => env('APP_API_BUDGET_USD', 10),
 
-    'mailgun' => [
-        'domain' => env('MAILGUN_DOMAIN'),
-        'secret' => env('MAILGUN_SECRET'),
-        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
-        'scheme' => 'https',
+    // fal.ai (Flux Kontext 圖片生成)
+    'fal' => [
+        'key' => env('FAL_API_KEY'),
     ],
 
-    'postmark' => [
-        'token' => env('POSTMARK_TOKEN'),
+    // Kling AI (影片生成)
+    'kling' => [
+        'access_key' => env('KLING_ACCESS_KEY'),
+        'secret_key' => env('KLING_SECRET_KEY'),
     ],
 
+    // Azure TTS (配音)
+    'azure_tts' => [
+        'key' => env('AZURE_TTS_KEY'),
+        'region' => env('AZURE_TTS_REGION', 'eastasia'),
+    ],
+
+    // Remotion Lambda (影片剪接)
+    'remotion' => [
+        'function_name' => env('REMOTION_FUNCTION_NAME'),
+        'serve_url' => env('REMOTION_SERVE_URL'),
+        'region' => env('REMOTION_REGION', 'us-east-1'),
+    ],
+
+    // AWS (用於 Remotion Lambda + S3)
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    container_name: multisite-cms-app
+    container_name: aivideo-app
     working_dir: /var/www/html
     command: >-
       sh -lc "mkdir -p storage/framework/cache storage/framework/sessions
@@ -19,21 +19,22 @@ services:
     env_file:
       - .env.docker
     environment:
-      PHP_IDE_CONFIG: serverName=multisite-cms
       DB_SOCKET: ""
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   queue:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    container_name: multisite-cms-queue
+    container_name: aivideo-queue
     working_dir: /var/www/html
     command: >-
       sh -lc "if [ ! -f vendor/autoload.php ]; then composer install; fi
-      && php artisan queue:work database --sleep=3 --tries=3 --max-time=3600"
+      && php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600"
     volumes:
       - ./:/var/www/html
       - vendor_data:/var/www/html/vendor
@@ -45,15 +46,17 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       app:
         condition: service_started
     restart: unless-stopped
 
   web:
     image: nginx:1.27-alpine
-    container_name: multisite-cms-web
+    container_name: aivideo-web
     ports:
-      - "8000:80"
+      - "8010:80"
     volumes:
       - ./:/var/www/html
       - storage_data:/var/www/html/storage
@@ -63,11 +66,11 @@ services:
 
   vite:
     image: node:20-alpine
-    container_name: multisite-cms-vite
+    container_name: aivideo-vite
     working_dir: /var/www/html
-    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5174"
     ports:
-      - "5173:5173"
+      - "5174:5174"
     volumes:
       - ./:/var/www/html
       - node_modules_data:/var/www/html/node_modules
@@ -81,14 +84,14 @@ services:
 
   mysql:
     image: mysql:8.4
-    container_name: multisite-cms-mysql
+    container_name: aivideo-mysql
     ports:
-      - "3307:3306"
+      - "3308:3306"
     environment:
-      MYSQL_DATABASE: multisite_cms
+      MYSQL_DATABASE: aivideo
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: multisite
-      MYSQL_PASSWORD: multisite
+      MYSQL_USER: aivideo
+      MYSQL_PASSWORD: aivideo
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -97,22 +100,36 @@ services:
       retries: 20
       interval: 5s
 
+  redis:
+    image: redis:7-alpine
+    container_name: aivideo-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 20
+      interval: 5s
+
   phpmyadmin:
     image: phpmyadmin:latest
-    container_name: multisite-cms-phpmyadmin
+    container_name: aivideo-phpmyadmin
     ports:
-      - "8082:80"
+      - "8083:80"
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
-      PMA_USER: multisite
-      PMA_PASSWORD: multisite
+      PMA_USER: aivideo
+      PMA_PASSWORD: aivideo
     depends_on:
       mysql:
         condition: service_healthy
 
 volumes:
   mysql_data:
+  redis_data:
   node_modules_data:
   storage_data:
   vendor_data:
