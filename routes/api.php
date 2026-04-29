@@ -8,6 +8,7 @@ Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
 // 需要認證的路由
 Route::middleware('auth:sanctum')->prefix('cases')->group(function () {
+    Route::get('/', [BuildingCaseController::class, 'index']);
     Route::post('/', [BuildingCaseController::class, 'store']);
     Route::get('/{buildingCase}', [BuildingCaseController::class, 'show']);
     Route::post('/{buildingCase}/generate-characters', [BuildingCaseController::class, 'generateCharacters']);

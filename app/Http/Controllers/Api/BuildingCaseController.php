@@ -18,6 +18,13 @@ use Illuminate\Support\Facades\Log;
 
 final class BuildingCaseController
 {
+    public function index(): JsonResponse
+    {
+        return response()->json(
+            BuildingCase::orderByDesc('created_at')->get()
+        );
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -33,9 +40,26 @@ final class BuildingCaseController
             'script_v2' => 'nullable|array',
         ]);
 
+        $shotsData = $validated['script_v2']['shots'] ?? [];
+        unset($validated['script_v2']);
+
         $case = BuildingCase::create($validated);
 
-        return response()->json($case, 201);
+        foreach ($shotsData as $shotData) {
+            $case->shots()->create([
+                'shot_id' => $shotData['shot_id'] ?? 'S01',
+                'shot_order' => $shotData['shot_order'] ?? 1,
+                'duration_seconds' => $shotData['duration_seconds'] ?? 5,
+                'scene_description' => $shotData['scene_description'] ?? null,
+                'voiceover_text' => $shotData['voiceover_text'] ?? null,
+                'subtitle' => $shotData['subtitle'] ?? null,
+                'emotion' => $shotData['emotion'] ?? null,
+                'flux_prompt' => $shotData['flux_prompt'] ?? '',
+                'kling_prompt' => $shotData['kling_prompt'] ?? null,
+            ]);
+        }
+
+        return response()->json($case->load('shots'), 201);
     }
 
     public function show(BuildingCase $buildingCase): JsonResponse

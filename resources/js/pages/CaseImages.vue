@@ -1,0 +1,128 @@
+<script setup>
+import { onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useCaseStore } from '../stores/case'
+import StatusBadge from '../components/StatusBadge.vue'
+import ActionButton from '../components/ActionButton.vue'
+
+const route = useRoute()
+const router = useRouter()
+const store = useCaseStore()
+
+const isGenerating = computed(() => store.status === 'images_generating')
+const isPending = computed(() => ['images_pending_review', 'images_partial'].includes(store.status))
+const canGenerate = computed(() => ['character_approved', 'script_pending_review', 'images_partial'].includes(store.status))
+const canApprove = computed(() => store.status === 'images_pending_review')
+const allDone = computed(() => store.shots.every(s => s.image_status === 'done'))
+const failedShots = computed(() => store.shots.filter(s => s.image_status === 'failed'))
+
+onMounted(() => store.load(route.params.id))
+
+async function generate() {
+    await store.generateScenes()
+    // 開始輪詢更新
+    pollUntilDone()
+}
+
+async function approve() {
+    await store.approveImages()
+    router.push({ name: 'case.final', params: { id: route.params.id } })
+}
+
+let pollTimer = null
+function pollUntilDone() {
+    clearInterval(pollTimer)
+    pollTimer = setInterval(async () => {
+        await store.refresh()
+        if (!['images_generating'].includes(store.status)) {
+            clearInterval(pollTimer)
+        }
+    }, 5000)
+}
+
+function statusColor(status) {
+    return {
+        pending: 'bg-gray-400',
+        processing: 'bg-yellow-400 animate-pulse',
+        done: 'bg-green-400',
+        failed: 'bg-red-400',
+    }[status] ?? 'bg-gray-400'
+}
+</script>
+
+<template>
+    <div v-if="store.current">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">{{ store.current.name }} — 場景圖</h2>
+                <p class="text-sm text-gray-500 mt-1">審核 {{ store.shots.length }} 張場景圖</p>
+            </div>
+            <StatusBadge :status="store.status" />
+        </div>
+
+        <!-- 生成按鈕 -->
+        <div v-if="canGenerate && store.shots.every(s => !s.image_url)" class="text-center py-12">
+            <ActionButton :loading="store.loading" @click="generate">生成場景圖</ActionButton>
+        </div>
+
+        <!-- 3x3 Grid -->
+        <div v-if="store.shots.length" class="grid grid-cols-3 gap-3 mb-6">
+            <div
+                v-for="shot in store.shots"
+                :key="shot.id"
+                class="bg-white rounded-lg border overflow-hidden"
+            >
+                <div class="relative">
+                    <img
+                        v-if="shot.image_url"
+                        :src="shot.image_url"
+                        :alt="shot.shot_id"
+                        class="w-full aspect-[9/16] object-cover"
+                    />
+                    <div v-else class="w-full aspect-[9/16] bg-gray-100 flex items-center justify-center text-gray-400">
+                        {{ shot.image_status === 'processing' ? '生成中...' : '待生成' }}
+                    </div>
+                    <!-- 狀態指示燈 -->
+                    <div class="absolute top-2 right-2 flex items-center gap-1">
+                        <span :class="['w-2 h-2 rounded-full', statusColor(shot.image_status)]" />
+                    </div>
+                </div>
+                <div class="p-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-gray-700">{{ shot.shot_id }} ({{ shot.duration_seconds }}s)</span>
+                        <span v-if="shot.image_status === 'failed'" class="text-xs text-red-500">失敗</span>
+                    </div>
+                    <p v-if="shot.subtitle" class="text-xs text-gray-400 mt-1 truncate">{{ shot.subtitle }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 失敗的 shots 提示 -->
+        <div v-if="failedShots.length" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p class="text-red-700 text-sm">
+                {{ failedShots.length }} 張場景圖生成失敗：{{ failedShots.map(s => s.shot_id).join('、') }}
+            </p>
+            <ActionButton variant="danger" :loading="store.loading" @click="generate" class="mt-2">
+                重新生成失敗的鏡頭
+            </ActionButton>
+        </div>
+
+        <!-- 操作按鈕 -->
+        <div class="flex justify-between">
+            <ActionButton variant="secondary" @click="router.push({ name: 'case.script', params: { id: route.params.id } })">
+                返回腳本
+            </ActionButton>
+            <div class="flex gap-3">
+                <ActionButton v-if="canGenerate" variant="secondary" :loading="store.loading" @click="generate">
+                    全部重新生成
+                </ActionButton>
+                <ActionButton v-if="canApprove && allDone" variant="success" :loading="store.loading" @click="approve">
+                    全部核准，開始生成動畫
+                </ActionButton>
+            </div>
+        </div>
+
+        <p v-if="store.error" class="text-red-600 text-sm mt-4">{{ store.error }}</p>
+    </div>
+    <div v-else class="text-gray-500">載入中...</div>
+</template>
