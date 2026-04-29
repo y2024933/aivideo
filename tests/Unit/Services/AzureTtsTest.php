@@ -80,7 +80,7 @@ it('returns audio_url and duration_seconds on success', function () {
     $result = $tts->synthesize('你好世界');
 
     expect($result)->toHaveKeys(['audio_url', 'duration_seconds']);
-    expect($result['audio_url'])->toStartWith('/storage/voiceovers/');
+    expect($result['audio_url'])->toContain('/storage/voiceovers/');
     expect($result['audio_url'])->toEndWith('.mp3');
     expect($result['duration_seconds'])->toBeGreaterThan(0);
 });

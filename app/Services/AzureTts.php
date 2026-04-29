@@ -55,8 +55,10 @@ final class AzureTts implements TtsContract
         $charCount = mb_strlen(preg_replace('/\s+/u', '', $processedText));
         $durationSeconds = round($charCount * 0.35, 1);
 
+        $audioUrl = rtrim(config('app.url'), '/') . "/storage/voiceovers/{$filename}";
+
         return [
-            'audio_url' => "/storage/voiceovers/{$filename}",
+            'audio_url' => $audioUrl,
             'duration_seconds' => $durationSeconds,
         ];
     }

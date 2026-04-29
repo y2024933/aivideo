@@ -31,9 +31,13 @@ final class BuildingCaseController
             'name' => 'required|string|max:255',
             'builder_name' => 'nullable|string|max:255',
             'location' => 'nullable|string|max:255',
-            'character_dna' => 'nullable|string',
+            'area_range' => 'nullable|string|max:64',
+            'price_range' => 'nullable|string|max:64',
             'target_audience' => 'nullable|string|max:32',
             'tone' => 'nullable|string|max:32',
+            'video_length_seconds' => 'nullable|integer|min:15|max:180',
+            'character_dna' => 'nullable|string',
+            'character_nickname' => 'nullable|string|max:64',
             'story_outline' => 'nullable|string',
             'must_have' => 'nullable|string',
             'taboos' => 'nullable|string',
@@ -109,7 +113,7 @@ final class BuildingCaseController
 
         $buildingCase->transitionTo(CaseStatus::ImagesGenerating, 'operator');
 
-        $shots = $buildingCase->shots()->where('image_status', 'pending')->get();
+        $shots = $buildingCase->shots()->whereIn('image_status', ['pending', 'failed'])->get();
         $costPerImage = (float) config('services.fal.cost_per_image');
         $totalCost = 0.0;
         $hasFailure = false;
@@ -157,7 +161,12 @@ final class BuildingCaseController
     {
         $validated = $request->validate(['character_option_id' => 'required|uuid']);
 
-        $buildingCase->update(['approved_character_id' => $validated['character_option_id']]);
+        $option = $buildingCase->characterOptions()->find($validated['character_option_id']);
+        if (! $option) {
+            return response()->json(['error' => '角色選項不存在或不屬於此建案'], 422);
+        }
+
+        $buildingCase->update(['approved_character_id' => $option->id]);
         $buildingCase->transitionTo(CaseStatus::CharacterApproved, 'operator');
 
         return response()->json($buildingCase->fresh());
