@@ -42,7 +42,10 @@ async function submit() {
                 <ActionButton :loading="auth.loading" class="w-full justify-center">登入</ActionButton>
             </form>
 
-            <p class="text-center text-xs text-gray-400 mt-4">預設帳號：admin@aivideo.local / password</p>
+            <div class="text-center mt-4 space-y-1">
+                <p class="text-xs text-gray-400">預設帳號：admin@aivideo.local / password</p>
+                <RouterLink to="/guide" class="text-xs text-indigo-500 hover:underline">查看操作流程</RouterLink>
+            </div>
         </div>
     </div>
 </template>

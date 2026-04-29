@@ -3,6 +3,7 @@ import { useAuthStore } from './stores/auth'
 
 const routes = [
     { path: '/login', name: 'login', component: () => import('./pages/Login.vue'), meta: { guest: true } },
+    { path: '/guide', name: 'guide', component: () => import('./pages/Guide.vue'), meta: { guest: true } },
     { path: '/', name: 'home', component: () => import('./pages/CaseList.vue') },
     { path: '/cases/new', name: 'case.create', component: () => import('./pages/CaseCreate.vue') },
     { path: '/cases/:id/character', name: 'case.character', component: () => import('./pages/CaseCharacter.vue') },
