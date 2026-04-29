@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCaseStore } from '../stores/case'
 import StatusBadge from '../components/StatusBadge.vue'
@@ -35,6 +35,17 @@ function pollUntilDone() {
         await store.refresh()
         if (!['images_generating'].includes(store.status)) clearInterval(pollTimer)
     }, 5000)
+}
+
+const regeneratingScenes = ref(new Set())
+
+async function regenerateScene(shotId) {
+    regeneratingScenes.value.add(shotId)
+    try {
+        await store.regenerateScene(shotId)
+    } finally {
+        regeneratingScenes.value.delete(shotId)
+    }
 }
 
 function statusColor(status) {
@@ -95,6 +106,14 @@ function statusColor(status) {
                             <span v-if="shot.image_status === 'failed'" class="text-xs text-red-500">失敗</span>
                         </div>
                         <p v-if="shot.subtitle" class="text-xs text-gray-400 mt-1 truncate">{{ shot.subtitle }}</p>
+                        <button
+                            v-if="shot.image_url || shot.image_status === 'failed'"
+                            :disabled="regeneratingScenes.has(shot.id)"
+                            class="mt-1 w-full text-xs py-1 rounded border border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            @click="regenerateScene(shot.id)"
+                        >
+                            {{ regeneratingScenes.has(shot.id) ? '重跑中...' : '重跑' }}
+                        </button>
                     </div>
                 </div>
             </div>

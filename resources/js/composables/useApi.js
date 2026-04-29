@@ -15,4 +15,6 @@ export const useApi = () => ({
     approveImages: (id) => api.post(`/cases/${id}/approve-images`),
     generateVoiceover: (id) => api.post(`/cases/${id}/generate-voiceover`),
     renderVideo: (id) => api.post(`/cases/${id}/render-video`),
+    regenerateScene: (caseId, shotId) => api.post(`/cases/${caseId}/regenerate-scene/${shotId}`),
+    regenerateVideo: (caseId, shotId) => api.post(`/cases/${caseId}/regenerate-video/${shotId}`),
 })

@@ -8,6 +8,17 @@ import ActionButton from '../components/ActionButton.vue'
 const route = useRoute()
 const store = useCaseStore()
 
+const regeneratingVideos = ref(new Set())
+
+async function regenerateVideo(shotId) {
+    regeneratingVideos.value.add(shotId)
+    try {
+        await store.regenerateVideo(shotId)
+    } finally {
+        regeneratingVideos.value.delete(shotId)
+    }
+}
+
 const isProducing = computed(() => store.status === 'producing_final')
 const isFinalReview = computed(() => store.status === 'final_pending_review')
 const isCompleted = computed(() => store.status === 'completed')
@@ -84,9 +95,19 @@ function statusIconClass(status) {
                             <span :class="['text-2xl mb-1', statusIconClass(shot.video_status)]">{{ statusIcon(shot.video_status) }}</span>
                             <span class="text-gray-400">{{ shot.video_status === 'processing' ? '生成中' : shot.video_status }}</span>
                         </div>
-                        <div class="p-2 flex items-center justify-between text-xs">
-                            <span class="font-medium">{{ shot.shot_id }}</span>
-                            <span v-if="shot.video_status === 'failed'" class="text-red-500">{{ shot.video_error || '失敗' }}</span>
+                        <div class="p-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-medium">{{ shot.shot_id }}</span>
+                                <span v-if="shot.video_status === 'failed'" class="text-red-500">{{ shot.video_error || '失敗' }}</span>
+                            </div>
+                            <button
+                                v-if="shot.video_status === 'done' || shot.video_status === 'failed'"
+                                :disabled="regeneratingVideos.has(shot.id)"
+                                class="mt-1 w-full text-xs py-1 rounded border border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                @click="regenerateVideo(shot.id)"
+                            >
+                                {{ regeneratingVideos.has(shot.id) ? '重跑中...' : '重跑' }}
+                            </button>
                         </div>
                     </div>
                 </div>

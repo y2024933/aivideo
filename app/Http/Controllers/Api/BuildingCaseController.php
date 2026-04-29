@@ -9,6 +9,7 @@ use App\Jobs\GenerateCharacterPreviewJob;
 use App\Jobs\PollKlingVideoJob;
 use App\Jobs\PollRemotionRenderJob;
 use App\Models\BuildingCase;
+use App\Models\Shot;
 use App\Services\Contracts\ImageGeneratorContract;
 use App\Services\Contracts\TtsContract;
 use App\Services\Contracts\VideoEditorContract;
@@ -260,5 +261,81 @@ final class BuildingCaseController
             'render_id' => $result['render_id'],
             'message' => '影片渲染已提交，請稍後查詢進度',
         ]);
+    }
+
+    public function regenerateScene(BuildingCase $buildingCase, Shot $shot, ImageGeneratorContract $imageGenerator): JsonResponse
+    {
+        abort_unless($shot->case_id === $buildingCase->id, 404);
+
+        $approvedCharacter = $buildingCase->approvedCharacter;
+        if (! $approvedCharacter?->image_url) {
+            return response()->json(['error' => '尚未核准角色或角色無圖片'], 422);
+        }
+
+        $costPerImage = (float) config('services.fal.cost_per_image');
+
+        try {
+            $result = $imageGenerator->generateSceneImage(
+                $shot->flux_prompt,
+                $approvedCharacter->image_url
+            );
+
+            $shot->update([
+                'image_url' => $result['image_url'],
+                'image_request_id' => $result['request_id'],
+                'image_status' => $result['image_url'] ? 'done' : 'failed',
+                'image_cost_usd' => $costPerImage,
+            ]);
+
+            $buildingCase->addCost($costPerImage);
+        } catch (\Throwable $e) {
+            Log::error('[BuildingCaseController::regenerateScene] 單張場景圖重跑失敗', [
+                'shot_id' => $shot->shot_id,
+                'exception' => $e,
+            ]);
+
+            $shot->update([
+                'image_status' => 'failed',
+                'image_retry_count' => $shot->image_retry_count + 1,
+            ]);
+        }
+
+        return response()->json($shot->fresh());
+    }
+
+    public function regenerateVideo(BuildingCase $buildingCase, Shot $shot, VideoGeneratorContract $videoGenerator): JsonResponse
+    {
+        abort_unless($shot->case_id === $buildingCase->id, 404);
+
+        if (! $shot->image_url) {
+            return response()->json(['error' => '此鏡頭尚無場景圖'], 422);
+        }
+
+        try {
+            $result = $videoGenerator->submitImageToVideo(
+                $shot->image_url,
+                $shot->kling_prompt ?? $shot->flux_prompt,
+                (int) ($shot->duration_seconds ?: 5),
+            );
+
+            $shot->update([
+                'video_request_id' => $result['task_id'],
+                'video_status' => 'processing',
+            ]);
+
+            PollKlingVideoJob::dispatch($shot->id, $result['task_id'])->delay(now()->addSeconds(15));
+        } catch (\Throwable $e) {
+            Log::error('[BuildingCaseController::regenerateVideo] 單段動畫重跑失敗', [
+                'shot_id' => $shot->shot_id,
+                'exception' => $e,
+            ]);
+
+            $shot->update([
+                'video_status' => 'failed',
+                'video_error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json($shot->fresh());
     }
 }

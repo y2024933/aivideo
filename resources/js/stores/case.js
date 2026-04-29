@@ -114,6 +114,30 @@ export const useCaseStore = defineStore('case', () => {
         }
     }
 
+    async function regenerateScene(shotId) {
+        try {
+            const { data } = await api.regenerateScene(current.value.id, shotId)
+            const idx = current.value.shots.findIndex(s => s.id === shotId)
+            if (idx !== -1) current.value.shots.splice(idx, 1, data)
+            return data
+        } catch (e) {
+            error.value = e.response?.data?.error ?? '場景圖重跑失敗'
+            throw e
+        }
+    }
+
+    async function regenerateVideo(shotId) {
+        try {
+            const { data } = await api.regenerateVideo(current.value.id, shotId)
+            const idx = current.value.shots.findIndex(s => s.id === shotId)
+            if (idx !== -1) current.value.shots.splice(idx, 1, data)
+            return data
+        } catch (e) {
+            error.value = e.response?.data?.error ?? '動畫重跑失敗'
+            throw e
+        }
+    }
+
     function refresh() {
         if (current.value?.id) load(current.value.id)
     }
@@ -123,6 +147,6 @@ export const useCaseStore = defineStore('case', () => {
         status, shots, characterOptions, voiceover,
         load, create, generateCharacters, approveCharacter,
         generateScenes, approveImages, generateVoiceover,
-        renderVideo, refresh,
+        renderVideo, regenerateScene, regenerateVideo, refresh,
     }
 })
