@@ -16,7 +16,7 @@ final class StubVideoGenerator implements VideoGeneratorContract
     public function queryTaskStatus(string $taskId): array
     {
         return [
-            'status' => 'completed',
+            'status' => 'succeed',
             'video_url' => 'https://placehold.co/1080x1920.mp4',
             'error' => null,
         ];

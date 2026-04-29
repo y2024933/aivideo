@@ -17,6 +17,7 @@ return [
     'kling' => [
         'access_key' => env('KLING_ACCESS_KEY'),
         'secret_key' => env('KLING_SECRET_KEY'),
+        'cost_per_video' => (float) env('KLING_COST_PER_VIDEO', 0.21),
     ],
 
     // Azure TTS (配音)

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Enums\CaseStatus;
+use App\Jobs\PollKlingVideoJob;
 use App\Models\BuildingCase;
 use App\Services\Contracts\ImageGeneratorContract;
+use App\Services\Contracts\VideoGeneratorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -132,5 +134,43 @@ final class BuildingCaseController
         $buildingCase->transitionTo(CaseStatus::CharacterApproved, 'operator');
 
         return response()->json($buildingCase->fresh());
+    }
+
+    public function approveImages(BuildingCase $buildingCase, VideoGeneratorContract $videoGenerator): JsonResponse
+    {
+        $buildingCase->transitionTo(CaseStatus::ImagesApproved, 'operator');
+
+        $shots = $buildingCase->shots()->where('image_status', 'done')->get();
+
+        foreach ($shots as $shot) {
+            try {
+                $result = $videoGenerator->submitImageToVideo(
+                    $shot->image_url,
+                    $shot->kling_prompt ?? $shot->flux_prompt,
+                    (int) ($shot->duration_seconds ?: 5),
+                );
+
+                $shot->update([
+                    'video_request_id' => $result['task_id'],
+                    'video_status' => 'processing',
+                ]);
+
+                PollKlingVideoJob::dispatch($shot->id, $result['task_id'])->delay(now()->addSeconds(15));
+            } catch (\Throwable $e) {
+                Log::error('[BuildingCaseController::approveImages] 影片提交失敗', [
+                    'shot_id' => $shot->shot_id,
+                    'exception' => $e,
+                ]);
+
+                $shot->update([
+                    'video_status' => 'failed',
+                    'video_error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $buildingCase->transitionTo(CaseStatus::ProducingFinal, 'system');
+
+        return response()->json($buildingCase->load('shots'));
     }
 }
