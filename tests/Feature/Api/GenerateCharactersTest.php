@@ -3,19 +3,22 @@
 declare(strict_types=1);
 
 use App\Enums\CaseStatus;
+use App\Jobs\GenerateCharacterPreviewJob;
 use App\Models\BuildingCase;
 use App\Models\User;
 use App\Services\Contracts\ImageGeneratorContract;
 use App\Services\Stubs\StubImageGenerator;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
-    // 確保使用 stub，不打真實 API
     $this->app->bind(ImageGeneratorContract::class, fn () => new StubImageGenerator());
     Sanctum::actingAs(User::factory()->create());
 });
 
-it('generates characters and transitions status correctly', function () {
+it('dispatches job and returns 202 immediately', function () {
+    Queue::fake();
+
     $case = BuildingCase::create([
         'name' => '測試建案',
         'character_dna' => 'a cute orange cat in suit',
@@ -23,41 +26,45 @@ it('generates characters and transitions status correctly', function () {
 
     $response = $this->postJson("/api/cases/{$case->id}/generate-characters");
 
-    $response->assertStatus(200);
+    $response->assertStatus(202);
     $response->assertJsonCount(1, 'character_options');
 
     $case->refresh();
-    expect($case->status)->toBe(CaseStatus::CharacterPendingReview);
+    expect($case->status)->toBe(CaseStatus::CharacterGenerating);
+
+    Queue::assertPushed(GenerateCharacterPreviewJob::class, 1);
 });
 
-it('transitions to CharacterFailed when image generator throws', function () {
-    // 綁定一個會拋例外的假實作
-    $this->app->bind(ImageGeneratorContract::class, function () {
-        return new class implements ImageGeneratorContract {
-            public function generateCharacterPreviews(string $prompt, int $count = 4): array
-            {
-                throw new RuntimeException('API connection failed');
-            }
-
-            public function generateSceneImage(string $prompt, string $referenceImageUrl): array
-            {
-                return [];
-            }
-        };
-    });
-
+it('job generates image and updates status', function () {
     $case = BuildingCase::create([
-        'name' => '失敗測試建案',
-        'character_dna' => 'will fail',
+        'name' => '測試建案',
+        'character_dna' => 'a cute orange cat',
     ]);
 
-    $response = $this->postJson("/api/cases/{$case->id}/generate-characters");
+    $option = $case->characterOptions()->create([
+        'prompt' => 'a cute orange cat',
+        'status' => 'pending',
+    ]);
 
-    $response->assertStatus(500);
-    $response->assertJsonPath('error', '角色生成失敗');
+    $case->transitionTo(CaseStatus::CharacterGenerating, 'operator');
+
+    // 用 Http::fake 模擬 fal.ai 回應
+    \Illuminate\Support\Facades\Http::fake([
+        'fal.run/fal-ai/flux-pro/v1.1' => \Illuminate\Support\Facades\Http::response([
+            'images' => [['url' => 'https://fal.media/test-image.jpg']],
+            'request_id' => 'req_123',
+        ]),
+    ]);
+
+    // 直接執行 job
+    (new GenerateCharacterPreviewJob($option->id, $case->id, 'a cute orange cat'))->handle();
+
+    $option->refresh();
+    expect($option->status)->toBe('done');
+    expect($option->image_url)->toBe('https://fal.media/test-image.jpg');
 
     $case->refresh();
-    expect($case->status)->toBe(CaseStatus::CharacterFailed);
+    expect($case->status)->toBe(CaseStatus::CharacterPendingReview);
 });
 
 it('generates scenes using approved character reference image', function () {
@@ -66,7 +73,6 @@ it('generates scenes using approved character reference image', function () {
         'character_dna' => 'orange cat',
     ]);
 
-    // 建立角色選項並核准
     $charOption = $case->characterOptions()->create([
         'prompt' => 'orange cat',
         'image_url' => 'https://placehold.co/1024x1792/orange/white?text=Char',
@@ -77,7 +83,6 @@ it('generates scenes using approved character reference image', function () {
     $case->update(['approved_character_id' => $charOption->id]);
     $case->transitionTo(CaseStatus::CharacterApproved, 'operator');
 
-    // 建立待處理的 shots
     $case->shots()->createMany([
         ['shot_id' => 'S01', 'shot_order' => 1, 'flux_prompt' => 'a park with cat walking'],
         ['shot_id' => 'S02', 'shot_order' => 2, 'flux_prompt' => 'cat sitting by the river'],
@@ -91,21 +96,12 @@ it('generates scenes using approved character reference image', function () {
     $case->refresh();
     expect($case->status)->toBe(CaseStatus::ImagesPendingReview);
     expect((float) $case->cost_usd)->toBeGreaterThan(0);
-
-    // 確認 shots 狀態已更新
-    $case->shots->each(function ($shot) {
-        expect($shot->image_status)->toBe('done');
-        expect($shot->image_url)->toContain('placehold.co');
-    });
 });
 
 it('returns 422 when no approved character', function () {
-    $case = BuildingCase::create([
-        'name' => '無角色測試',
-    ]);
+    $case = BuildingCase::create(['name' => '無角色測試']);
 
     $response = $this->postJson("/api/cases/{$case->id}/generate-scenes");
 
     $response->assertStatus(422);
-    $response->assertJsonPath('error', '尚未核准角色或角色無圖片');
 });

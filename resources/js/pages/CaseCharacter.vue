@@ -15,10 +15,25 @@ const isFailed = computed(() => store.status === 'character_failed')
 const canGenerate = computed(() => ['draft', 'character_failed'].includes(store.status))
 const canProceed = computed(() => store.status === 'character_approved')
 
-onMounted(() => store.load(route.params.id))
+let pollTimer = null
+
+onMounted(() => {
+    store.load(route.params.id).then(() => {
+        if (store.status === 'character_generating') startPolling()
+    })
+})
 
 async function generate() {
     await store.generateCharacters()
+    startPolling()
+}
+
+function startPolling() {
+    clearInterval(pollTimer)
+    pollTimer = setInterval(async () => {
+        await store.refresh()
+        if (store.status !== 'character_generating') clearInterval(pollTimer)
+    }, 3000)
 }
 
 async function approve(optionId) {

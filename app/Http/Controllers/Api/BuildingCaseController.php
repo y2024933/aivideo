@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Enums\CaseStatus;
+use App\Jobs\GenerateCharacterPreviewJob;
 use App\Jobs\PollKlingVideoJob;
 use App\Jobs\PollRemotionRenderJob;
 use App\Models\BuildingCase;
@@ -73,34 +74,24 @@ final class BuildingCaseController
         );
     }
 
-    public function generateCharacters(BuildingCase $buildingCase, ImageGeneratorContract $imageGenerator): JsonResponse
+    public function generateCharacters(BuildingCase $buildingCase): JsonResponse
     {
         $buildingCase->transitionTo(CaseStatus::CharacterGenerating, 'operator');
 
-        try {
-            $results = $imageGenerator->generateCharacterPreviews(
-                $buildingCase->character_dna ?? $buildingCase->name,
-                1
-            );
-        } catch (\Throwable $e) {
-            Log::error('[BuildingCaseController::generateCharacters] 角色生成失敗', ['exception' => $e]);
-            $buildingCase->transitionTo(CaseStatus::CharacterFailed, 'system', $e->getMessage());
+        $prompt = $buildingCase->character_dna ?? $buildingCase->name;
+        $count = (int) ($buildingCase->query_params['character_count'] ?? 1);
 
-            return response()->json(['error' => '角色生成失敗'], 500);
-        }
-
-        foreach ($results as $result) {
-            $buildingCase->characterOptions()->create([
-                'prompt' => $buildingCase->character_dna ?? '',
-                'image_url' => $result['image_url'],
-                'fal_request_id' => $result['request_id'],
-                'status' => $result['image_url'] ? 'done' : 'pending',
+        // 建立 pending 的 character options，然後 dispatch job
+        for ($i = 0; $i < $count; $i++) {
+            $option = $buildingCase->characterOptions()->create([
+                'prompt' => $prompt,
+                'status' => 'pending',
             ]);
+
+            GenerateCharacterPreviewJob::dispatch($option->id, $buildingCase->id, $prompt);
         }
 
-        $buildingCase->transitionTo(CaseStatus::CharacterPendingReview, 'system');
-
-        return response()->json($buildingCase->load('characterOptions'));
+        return response()->json($buildingCase->load('characterOptions'), 202);
     }
 
     public function generateScenes(BuildingCase $buildingCase, ImageGeneratorContract $imageGenerator): JsonResponse
