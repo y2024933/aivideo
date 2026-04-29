@@ -19,23 +19,8 @@ onMounted(async () => {
     }
 })
 
-function nextStep(c) {
-    const routes = {
-        draft: 'case.character',
-        character_generating: 'case.character',
-        character_pending_review: 'case.character',
-        character_failed: 'case.character',
-        character_approved: 'case.script',
-        script_pending_review: 'case.script',
-        images_generating: 'case.images',
-        images_partial: 'case.images',
-        images_pending_review: 'case.images',
-        images_approved: 'case.final',
-        producing_final: 'case.final',
-        final_pending_review: 'case.final',
-        completed: 'case.final',
-    }
-    router.push({ name: routes[c.status] ?? 'case.character', params: { id: c.id } })
+function goToCase(c) {
+    router.push({ name: 'case.overview', params: { id: c.id } })
 }
 </script>
 
@@ -58,7 +43,7 @@ function nextStep(c) {
                 v-for="c in cases"
                 :key="c.id"
                 class="bg-white rounded-lg border p-4 flex items-center justify-between cursor-pointer hover:border-indigo-300 transition"
-                @click="nextStep(c)"
+                @click="goToCase(c)"
             >
                 <div>
                     <div class="font-medium text-gray-900">{{ c.name }}</div>
