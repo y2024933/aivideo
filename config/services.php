@@ -31,13 +31,8 @@ return [
         'function_name' => env('REMOTION_FUNCTION_NAME'),
         'serve_url' => env('REMOTION_SERVE_URL'),
         'region' => env('REMOTION_REGION', 'us-east-1'),
-    ],
-
-    // AWS (用於 Remotion Lambda + S3)
-    'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
-        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
 ];

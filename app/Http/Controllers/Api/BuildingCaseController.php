@@ -6,9 +6,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\CaseStatus;
 use App\Jobs\PollKlingVideoJob;
+use App\Jobs\PollRemotionRenderJob;
 use App\Models\BuildingCase;
 use App\Services\Contracts\ImageGeneratorContract;
 use App\Services\Contracts\TtsContract;
+use App\Services\Contracts\VideoEditorContract;
 use App\Services\Contracts\VideoGeneratorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -203,5 +205,36 @@ final class BuildingCaseController
         ]);
 
         return response()->json($voiceover, 201);
+    }
+
+    public function renderFinalVideo(BuildingCase $buildingCase, VideoEditorContract $videoEditor): JsonResponse
+    {
+        // 檢查所有 shots 影片已完成
+        $pendingShots = $buildingCase->shots()->where('video_status', '!=', 'done')->count();
+        if ($pendingShots > 0) {
+            return response()->json(['error' => '尚有未完成的影片片段'], 422);
+        }
+
+        // 檢查配音已存在
+        if (! $buildingCase->voiceover?->audio_url) {
+            return response()->json(['error' => '尚未產生配音'], 422);
+        }
+
+        try {
+            $result = $videoEditor->submitRender($buildingCase);
+        } catch (\Throwable $e) {
+            Log::error('[BuildingCaseController::renderFinalVideo] 提交渲染失敗', ['exception' => $e]);
+            return response()->json(['error' => '影片渲染提交失敗'], 500);
+        }
+
+        $buildingCase->update(['render_id' => $result['render_id']]);
+
+        PollRemotionRenderJob::dispatch($buildingCase->id, $result['render_id'])
+            ->delay(now()->addSeconds(30));
+
+        return response()->json([
+            'render_id' => $result['render_id'],
+            'message' => '影片渲染已提交，請稍後查詢進度',
+        ]);
     }
 }

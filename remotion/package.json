@@ -1,0 +1,17 @@
+{
+  "name": "aivideo-remotion",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "deploy": "remotion lambda sites create src/index.js --site-name=aivideo"
+  },
+  "dependencies": {
+    "remotion": "^4.0",
+    "@remotion/cli": "^4.0",
+    "@remotion/lambda": "^4.0",
+    "@remotion/transitions": "^4.0",
+    "react": "^18.0",
+    "react-dom": "^18.0"
+  }
+}
