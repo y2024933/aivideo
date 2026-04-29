@@ -20,7 +20,6 @@ onMounted(() => store.load(route.params.id))
 
 async function generate() {
     await store.generateScenes()
-    // 開始輪詢更新
     pollUntilDone()
 }
 
@@ -34,9 +33,7 @@ function pollUntilDone() {
     clearInterval(pollTimer)
     pollTimer = setInterval(async () => {
         await store.refresh()
-        if (!['images_generating'].includes(store.status)) {
-            clearInterval(pollTimer)
-        }
+        if (!['images_generating'].includes(store.status)) clearInterval(pollTimer)
     }, 5000)
 }
 
@@ -51,78 +48,84 @@ function statusColor(status) {
 </script>
 
 <template>
-    <div v-if="store.current">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h2 class="text-xl font-bold text-gray-900">{{ store.current.name }} — 場景圖</h2>
-                <p class="text-sm text-gray-500 mt-1">審核 {{ store.shots.length }} 張場景圖</p>
+    <div>
+        <!-- 頁面標題 -->
+        <header class="bg-white shadow -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-6 px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold leading-tight text-gray-800">
+                    {{ store.current?.name ?? '載入中...' }} — 場景圖
+                </h2>
+                <StatusBadge v-if="store.current" :status="store.status" />
             </div>
-            <StatusBadge :status="store.status" />
-        </div>
+        </header>
 
-        <!-- 生成按鈕 -->
-        <div v-if="canGenerate && store.shots.every(s => !s.image_url)" class="text-center py-12">
-            <ActionButton :loading="store.loading" @click="generate">生成場景圖</ActionButton>
-        </div>
+        <div v-if="store.current">
+            <p class="text-sm text-gray-500 mb-6">審核 {{ store.shots.length }} 張場景圖</p>
 
-        <!-- 3x3 Grid -->
-        <div v-if="store.shots.length" class="grid grid-cols-3 gap-3 mb-6">
-            <div
-                v-for="shot in store.shots"
-                :key="shot.id"
-                class="bg-white rounded-lg border overflow-hidden"
-            >
-                <div class="relative">
-                    <img
-                        v-if="shot.image_url"
-                        :src="shot.image_url"
-                        :alt="shot.shot_id"
-                        class="w-full aspect-[9/16] object-cover"
-                    />
-                    <div v-else class="w-full aspect-[9/16] bg-gray-100 flex items-center justify-center text-gray-400">
-                        {{ shot.image_status === 'processing' ? '生成中...' : '待生成' }}
+            <!-- 生成按鈕 -->
+            <div v-if="canGenerate && store.shots.every(s => !s.image_url)" class="text-center py-12">
+                <ActionButton :loading="store.loading" @click="generate">生成場景圖</ActionButton>
+            </div>
+
+            <!-- 3x3 Grid -->
+            <div v-if="store.shots.length" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                <div
+                    v-for="shot in store.shots"
+                    :key="shot.id"
+                    class="bg-white rounded-lg border overflow-hidden"
+                >
+                    <div class="relative">
+                        <img
+                            v-if="shot.image_url"
+                            :src="shot.image_url"
+                            :alt="shot.shot_id"
+                            class="w-full aspect-[9/16] object-cover"
+                        />
+                        <div v-else class="w-full aspect-[9/16] bg-gray-100 flex items-center justify-center text-gray-400">
+                            {{ shot.image_status === 'processing' ? '生成中...' : '待生成' }}
+                        </div>
+                        <!-- 狀態指示燈 -->
+                        <div class="absolute top-2 right-2 flex items-center gap-1">
+                            <span :class="['w-2 h-2 rounded-full', statusColor(shot.image_status)]" />
+                        </div>
                     </div>
-                    <!-- 狀態指示燈 -->
-                    <div class="absolute top-2 right-2 flex items-center gap-1">
-                        <span :class="['w-2 h-2 rounded-full', statusColor(shot.image_status)]" />
+                    <div class="p-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-gray-700">{{ shot.shot_id }} ({{ shot.duration_seconds }}s)</span>
+                            <span v-if="shot.image_status === 'failed'" class="text-xs text-red-500">失敗</span>
+                        </div>
+                        <p v-if="shot.subtitle" class="text-xs text-gray-400 mt-1 truncate">{{ shot.subtitle }}</p>
                     </div>
                 </div>
-                <div class="p-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-medium text-gray-700">{{ shot.shot_id }} ({{ shot.duration_seconds }}s)</span>
-                        <span v-if="shot.image_status === 'failed'" class="text-xs text-red-500">失敗</span>
-                    </div>
-                    <p v-if="shot.subtitle" class="text-xs text-gray-400 mt-1 truncate">{{ shot.subtitle }}</p>
+            </div>
+
+            <!-- 失敗的 shots 提示 -->
+            <div v-if="failedShots.length" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p class="text-red-700 text-sm">
+                    {{ failedShots.length }} 張場景圖生成失敗：{{ failedShots.map(s => s.shot_id).join('、') }}
+                </p>
+                <ActionButton variant="danger" :loading="store.loading" @click="generate" class="mt-2">
+                    重新生成失敗的鏡頭
+                </ActionButton>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="flex justify-between">
+                <ActionButton variant="secondary" @click="router.push({ name: 'case.script', params: { id: route.params.id } })">
+                    返回腳本
+                </ActionButton>
+                <div class="flex gap-3">
+                    <ActionButton v-if="canGenerate" variant="secondary" :loading="store.loading" @click="generate">
+                        全部重新生成
+                    </ActionButton>
+                    <ActionButton v-if="canApprove && allDone" variant="success" :loading="store.loading" @click="approve">
+                        全部核准，開始生成動畫
+                    </ActionButton>
                 </div>
             </div>
-        </div>
 
-        <!-- 失敗的 shots 提示 -->
-        <div v-if="failedShots.length" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p class="text-red-700 text-sm">
-                {{ failedShots.length }} 張場景圖生成失敗：{{ failedShots.map(s => s.shot_id).join('、') }}
-            </p>
-            <ActionButton variant="danger" :loading="store.loading" @click="generate" class="mt-2">
-                重新生成失敗的鏡頭
-            </ActionButton>
+            <p v-if="store.error" class="text-red-600 text-sm mt-4">{{ store.error }}</p>
         </div>
-
-        <!-- 操作按鈕 -->
-        <div class="flex justify-between">
-            <ActionButton variant="secondary" @click="router.push({ name: 'case.script', params: { id: route.params.id } })">
-                返回腳本
-            </ActionButton>
-            <div class="flex gap-3">
-                <ActionButton v-if="canGenerate" variant="secondary" :loading="store.loading" @click="generate">
-                    全部重新生成
-                </ActionButton>
-                <ActionButton v-if="canApprove && allDone" variant="success" :loading="store.loading" @click="approve">
-                    全部核准，開始生成動畫
-                </ActionButton>
-            </div>
-        </div>
-
-        <p v-if="store.error" class="text-red-600 text-sm mt-4">{{ store.error }}</p>
+        <div v-else class="text-gray-500">載入中...</div>
     </div>
-    <div v-else class="text-gray-500">載入中...</div>
 </template>

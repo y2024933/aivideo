@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApi } from '../composables/useApi'
 import StatusBadge from '../components/StatusBadge.vue'
 import axios from 'axios'
 
@@ -42,7 +41,10 @@ function nextStep(c) {
 
 <template>
     <div>
-        <h2 class="text-xl font-bold text-gray-900 mb-4">建案列表</h2>
+        <!-- 頁面標題 -->
+        <header class="bg-white shadow -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-6 px-4 sm:px-6 lg:px-8 py-6">
+            <h2 class="text-xl font-semibold leading-tight text-gray-800">建案列表</h2>
+        </header>
 
         <div v-if="loading" class="text-gray-500">載入中...</div>
 
