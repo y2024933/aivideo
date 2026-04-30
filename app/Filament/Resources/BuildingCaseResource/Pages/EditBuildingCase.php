@@ -365,8 +365,7 @@ class EditBuildingCase extends EditRecord
             ->label('生成配音')
             ->icon('heroicon-o-microphone')
             ->color('primary')
-            ->visible(fn () => $this->record->shots()->where('video_status', '!=', 'done')->count() === 0
-                && $this->record->shots()->count() > 0)
+            ->visible(fn () => $this->record->shots()->count() > 0)
             ->form([
                 Select::make('voice_name')
                     ->label('選擇聲音')

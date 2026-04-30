@@ -166,11 +166,11 @@ class ShotsRelationManager extends RelationManager
     private function regenerateVideoAction(): Tables\Actions\Action
     {
         return Tables\Actions\Action::make('regenerate_video')
-            ->label('重跑動畫')
+            ->label(fn ($record) => $record->video_status === 'pending' ? '生成動畫' : '重跑動畫')
             ->icon('heroicon-o-play')
             ->color('warning')
             ->requiresConfirmation()
-            ->visible(fn ($record) => $record->image_url && in_array($record->video_status, ['done', 'failed']))
+            ->visible(fn ($record) => $record->image_url && in_array($record->video_status, ['done', 'failed', 'pending']))
             ->action(function ($record) {
                 if (! $record->image_url) {
                     Notification::make()->title('此鏡頭尚無場景圖')->danger()->send();
