@@ -52,6 +52,7 @@ class CharacterOptionsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('cost_usd')->label('費用')->money('USD'),
                 Tables\Columns\TextColumn::make('created_at')->label('建立時間')->dateTime('Y-m-d H:i')->sortable(),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->poll('5s');
     }
 }

@@ -61,6 +61,7 @@ class ShotsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('subtitle')->label('字幕')->limit(30),
             ])
             ->defaultSort('shot_order')
+            ->poll('5s')
             ->actions([
                 $this->regenerateSceneAction(),
                 $this->regenerateVideoAction(),
