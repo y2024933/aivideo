@@ -65,10 +65,10 @@ class ShotsRelationManager extends RelationManager
     private function regenerateSceneAction(): Tables\Actions\Action
     {
         return Tables\Actions\Action::make('regenerate_scene')
-            ->label('重跑場景圖')
-            ->icon('heroicon-o-arrow-path')
-            ->color('warning')
-            ->visible(fn ($record) => in_array($record->image_status, ['done', 'failed', 'pending']))
+            ->label(fn ($record) => $record->image_status === 'pending' ? '生成場景圖' : '重跑場景圖')
+            ->icon(fn ($record) => $record->image_status === 'pending' ? 'heroicon-o-sparkles' : 'heroicon-o-arrow-path')
+            ->color(fn ($record) => $record->image_status === 'pending' ? 'primary' : 'warning')
+            ->visible(fn ($record) => in_array($record->image_status, ['done', 'failed', 'pending']) && $record->flux_prompt)
             ->form([
                 \Filament\Forms\Components\Select::make('model')
                     ->label('生成模型')

@@ -194,8 +194,17 @@ class EditBuildingCase extends EditRecord
             ->icon('heroicon-o-photo')
             ->color('primary')
             ->visible(fn () => in_array($this->record->status, [CaseStatus::CharacterApproved, CaseStatus::ScriptPendingReview, CaseStatus::ImagesPartial]))
-            ->requiresConfirmation()
-            ->action(function () {
+            ->form([
+                Select::make('model')
+                    ->label('生成模型')
+                    ->options([
+                        'flux_kontext' => 'Flux Kontext（角色一致性高）',
+                        'ideogram' => 'Ideogram（中文文字正確）',
+                    ])
+                    ->default('flux_kontext')
+                    ->required(),
+            ])
+            ->action(function (array $data) {
                 $case = $this->record;
                 $approvedCharacter = $case->approvedCharacter;
 
@@ -213,11 +222,18 @@ class EditBuildingCase extends EditRecord
                 $totalCost = 0.0;
                 $hasFailure = false;
 
+                $modelMap = [
+                    'flux_kontext' => \App\Services\FalKontextImageGenerator::MODEL_KONTEXT,
+                    'ideogram' => \App\Services\FalKontextImageGenerator::MODEL_IDEOGRAM,
+                ];
+                $selectedModel = $modelMap[$data['model'] ?? 'flux_kontext'] ?? null;
+
                 foreach ($shots as $shot) {
                     try {
                         $result = $imageGenerator->generateSceneImage(
                             $shot->flux_prompt,
-                            $referenceUrl
+                            $referenceUrl,
+                            $selectedModel
                         );
 
                         $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;
