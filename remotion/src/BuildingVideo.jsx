@@ -2,7 +2,6 @@ import {
   AbsoluteFill,
   Audio,
   Sequence,
-  useCurrentFrame,
   useVideoConfig,
 } from "remotion";
 import { Shot } from "./Shot";
@@ -10,7 +9,6 @@ import { Watermark } from "./Watermark";
 
 export const BuildingVideo = ({
   shots,
-  voiceover,
   bgm,
   watermark,
   publicFacilityLabel,
@@ -44,13 +42,17 @@ export const BuildingVideo = ({
         </Sequence>
       ))}
 
+      {/* Per-shot 配音音軌 */}
+      {shotTimings.map(({ shot, from, durationFrames }, i) =>
+        shot.voiceoverUrl ? (
+          <Sequence key={`vo-${i}`} from={from} durationInFrames={durationFrames}>
+            <Audio src={shot.voiceoverUrl} volume={1} />
+          </Sequence>
+        ) : null
+      )}
+
       {/* 浮水印（全程顯示） */}
       {watermark?.text && <Watermark text={watermark.text} />}
-
-      {/* 配音音軌 */}
-      {voiceover?.audioUrl && (
-        <Audio src={voiceover.audioUrl} volume={1} />
-      )}
 
       {/* BGM 音軌 */}
       {bgm?.audioUrl && (
