@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
-enum CaseStatus: string
+use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasLabel;
+
+enum CaseStatus: string implements HasLabel, HasColor
 {
     case Draft = 'draft';
     case CharacterGenerating = 'character_generating';
@@ -36,6 +39,22 @@ enum CaseStatus: string
             self::ProducingFinal => '產出最終素材中',
             self::FinalPendingReview => '成品待審核',
             self::Completed => '完成',
+        };
+    }
+
+    public function getLabel(): ?string
+    {
+        return $this->label();
+    }
+
+    public function getColor(): string|array|null
+    {
+        return match ($this) {
+            self::Draft => 'gray',
+            self::CharacterGenerating, self::ImagesGenerating, self::ProducingFinal => 'info',
+            self::CharacterPendingReview, self::ScriptPendingReview, self::ImagesPendingReview, self::FinalPendingReview => 'warning',
+            self::CharacterFailed, self::ImagesPartial => 'danger',
+            self::CharacterApproved, self::ImagesApproved, self::Completed => 'success',
         };
     }
 }
