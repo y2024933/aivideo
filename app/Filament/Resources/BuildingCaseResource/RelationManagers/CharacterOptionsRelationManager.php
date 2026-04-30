@@ -33,6 +33,13 @@ class CharacterOptionsRelationManager extends RelationManager
                         'failed' => 'danger',
                         default => 'gray',
                     }),
+                Tables\Columns\IconColumn::make('is_approved')
+                    ->label('選用')
+                    ->getStateUsing(fn ($record) => $record->id === $record->buildingCase?->approved_character_id)
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('')
+                    ->trueColor('success'),
                 Tables\Columns\TextColumn::make('cost_usd')->label('費用')->money('USD'),
                 Tables\Columns\TextColumn::make('created_at')->label('建立時間')->dateTime('Y-m-d H:i')->sortable(),
             ])
