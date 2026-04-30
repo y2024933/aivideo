@@ -415,7 +415,7 @@ class EditBuildingCase extends EditRecord
                             'shot_id' => $shot->shot_id,
                             'exception' => $e,
                         ]);
-                        $shot->update(['voiceover_status' => 'failed']);
+                        $shot->update(['voiceover_status' => 'failed', 'voiceover_url' => null]);
                         $failCount++;
                     }
                 }
@@ -442,10 +442,21 @@ class EditBuildingCase extends EditRecord
             ->label('渲染最終影片')
             ->icon('heroicon-o-film')
             ->color('warning')
-            ->visible(fn () => $this->record->shots()->where('video_status', '!=', 'done')->count() === 0
-                && $this->record->shots()->where('voiceover_status', 'done')->count() > 0
-                && ! $this->record->final_video_url
-                && ! $this->record->render_id)
+            ->visible(function () {
+                $shotsWithText = $this->record->shots()
+                    ->whereNotNull('voiceover_text')
+                    ->where('voiceover_text', '!=', '')
+                    ->count();
+                $voiceoversDone = $this->record->shots()
+                    ->where('voiceover_status', 'done')
+                    ->count();
+
+                return $this->record->shots()->where('video_status', '!=', 'done')->count() === 0
+                    && $shotsWithText > 0
+                    && $voiceoversDone >= $shotsWithText
+                    && ! $this->record->final_video_url
+                    && ! $this->record->render_id;
+            })
             ->requiresConfirmation()
             ->action(function () {
                 $case = $this->record;
