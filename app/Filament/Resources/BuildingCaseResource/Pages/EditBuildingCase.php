@@ -37,8 +37,55 @@ class EditBuildingCase extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            $this->importMarkdownAction(),
             Actions\DeleteAction::make(),
         ];
+    }
+
+    private function importMarkdownAction(): Action
+    {
+        return Action::make('import_markdown')
+            ->label('匯入 MD 腳本')
+            ->icon('heroicon-o-document-arrow-down')
+            ->color('gray')
+            ->form([
+                Forms\Components\Textarea::make('markdown_content')
+                    ->label('將 Cowork 產出的 MD 腳本貼在這裡（會覆蓋現有資料）')
+                    ->rows(15)
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                $parser = new \App\Services\MarkdownScriptParser();
+                $result = $parser->parse($data['markdown_content']);
+
+                // 更新建案基本資料
+                $fillData = array_filter([
+                    'name' => $result['name'] ?? null,
+                    'builder_name' => $result['builder_name'] ?? null,
+                    'character_nickname' => $result['character_nickname'] ?? null,
+                    'character_dna' => $result['character_dna'] ?? null,
+                ]);
+                if ($fillData) {
+                    $this->record->update($fillData);
+                }
+
+                // 刪除舊 shots，建立新 shots
+                if (! empty($result['shots'])) {
+                    $this->record->shots()->delete();
+                    foreach ($result['shots'] as $shot) {
+                        $this->record->shots()->create($shot);
+                    }
+                }
+
+                $shotCount = count($result['shots'] ?? []);
+                Notification::make()
+                    ->title('匯入成功')
+                    ->body("已更新建案資料並重建 {$shotCount} 個鏡頭")
+                    ->success()
+                    ->send();
+
+                $this->fillForm();
+            });
     }
 
     protected function getFormActions(): array
