@@ -10,7 +10,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class BuildingCaseResource extends Resource
 {
@@ -72,7 +71,7 @@ class BuildingCaseResource extends Resource
                         Forms\Components\Textarea::make('flux_prompt')->label('Flux Prompt')->rows(3)->default(''),
                         Forms\Components\Textarea::make('kling_prompt')->label('Kling Prompt')->rows(2),
                     ])->columns(2)
-                      ->defaultItems(9)
+                      ->defaultItems(0)
                       ->collapsible()
                       ->itemLabel(fn (array $state): string => $state['shot_id'] ?? 'Shot'),
                 ]),
@@ -122,8 +121,5 @@ class BuildingCaseResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->orderByDesc('created_at');
-    }
+    // 排序由 table()->defaultSort() 處理
 }
