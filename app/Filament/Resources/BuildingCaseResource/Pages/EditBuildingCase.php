@@ -218,7 +218,12 @@ class EditBuildingCase extends EditRecord
                 $case = $this->record;
                 $approvedCharacter = $case->approvedCharacter;
 
-                $referenceUrl = $approvedCharacter?->remote_url ?? $approvedCharacter?->image_url;
+                // remote_url 24 小時內有效，過期用本地圖
+                $remoteStillValid = $approvedCharacter?->remote_url
+                    && $approvedCharacter->updated_at?->diffInHours(now()) < 24;
+                $referenceUrl = $remoteStillValid
+                    ? $approvedCharacter->remote_url
+                    : ($approvedCharacter?->image_url ?? null);
                 if (! $referenceUrl) {
                     Notification::make()->title('尚未核准角色或角色無圖片')->danger()->send();
                     return;

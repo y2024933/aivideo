@@ -98,7 +98,12 @@ class ShotsRelationManager extends RelationManager
 
                 $imageGenerator = app(ImageGeneratorContract::class);
                 $costPerImage = (float) config('services.fal.cost_per_image');
-                $referenceUrl = $approvedCharacter->remote_url ?? $approvedCharacter->image_url;
+                // remote_url 24 小時內有效，過期用本地圖
+                $remoteStillValid = $approvedCharacter->remote_url
+                    && $approvedCharacter->updated_at?->diffInHours(now()) < 24;
+                $referenceUrl = $remoteStillValid
+                    ? $approvedCharacter->remote_url
+                    : $approvedCharacter->image_url;
 
                 $modelMap = [
                     'flux_kontext' => \App\Services\FalKontextImageGenerator::MODEL_KONTEXT,
