@@ -201,7 +201,7 @@ class ShotsRelationManager extends RelationManager
                         'image_retry_count' => $record->image_retry_count + 1,
                     ]);
 
-                    Notification::make()->title('場景圖重新生成失敗')->danger()->send();
+                    Notification::make()->title('場景圖重新生成失敗')->body($e->getMessage())->danger()->persistent()->send();
                 }
             });
     }
@@ -256,7 +256,7 @@ class ShotsRelationManager extends RelationManager
                         'video_error' => $e->getMessage(),
                     ]);
 
-                    Notification::make()->title('動畫重新生成失敗')->danger()->send();
+                    Notification::make()->title('動畫重新生成失敗')->body($e->getMessage())->danger()->persistent()->send();
                 }
             });
     }
@@ -309,7 +309,7 @@ class ShotsRelationManager extends RelationManager
                     ]);
 
                     $record->update(['voiceover_status' => 'failed', 'voiceover_url' => null, 'voiceover_remote_url' => null]);
-                    Notification::make()->title('配音生成失敗')->danger()->send();
+                    Notification::make()->title('配音生成失敗')->body($e->getMessage())->danger()->persistent()->send();
                 }
             });
     }

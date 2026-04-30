@@ -472,7 +472,12 @@ class EditBuildingCase extends EditRecord
                     $result = $videoEditor->submitRender($case);
                 } catch (\Throwable $e) {
                     Log::error('[EditBuildingCase::renderVideo] 提交渲染失敗', ['exception' => $e]);
-                    Notification::make()->title('影片渲染提交失敗')->danger()->send();
+                    Notification::make()
+                        ->title('影片渲染提交失敗')
+                        ->body($e->getMessage())
+                        ->danger()
+                        ->persistent()
+                        ->send();
                     return;
                 }
 
