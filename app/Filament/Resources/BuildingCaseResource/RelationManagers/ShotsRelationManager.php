@@ -30,7 +30,16 @@ class ShotsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('scene_description')->label('場景描述')->limit(30),
                 Tables\Columns\ImageColumn::make('image_url')->label('場景圖')
                     ->getStateUsing(fn ($record) => $record->image_url ? url($record->image_url) : null)
-                    ->width(80)->height(80),
+                    ->width(80)->height(80)
+                    ->action(
+                        Tables\Actions\Action::make('view_scene_image')
+                            ->modalContent(fn ($record) => new \Illuminate\Support\HtmlString(
+                                '<div style="text-align:center"><img src="' . url($record->image_url) . '" style="max-width:100%;max-height:80vh;border-radius:8px;" /></div>'
+                            ))
+                            ->modalHeading(fn ($record) => $record->shot_id . ' 場景圖')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('關閉')
+                    ),
                 Tables\Columns\TextColumn::make('image_status')->label('圖片狀態')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
