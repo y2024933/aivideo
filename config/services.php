@@ -17,6 +17,9 @@ return [
     'kling' => [
         'access_key' => env('KLING_ACCESS_KEY'),
         'secret_key' => env('KLING_SECRET_KEY'),
+        'model' => env('KLING_MODEL', 'kling-v2-5-turbo'),
+        'mode' => env('KLING_MODE', 'std'),
+        'duration' => (int) env('KLING_DURATION', 5),
         'cost_per_video' => (float) env('KLING_COST_PER_VIDEO', 0.21),
     ],
 

@@ -31,11 +31,11 @@ final class KlingVideoGenerator implements VideoGeneratorContract
         $response = Http::withHeaders($this->headers())
             ->timeout(30)
             ->post(self::BASE_URL, [
-                'model_name' => 'kling-v2-5-turbo',
+                'model_name' => config('services.kling.model', 'kling-v2-5-turbo'),
                 'image' => $imageUrl,
                 'prompt' => $prompt,
-                'duration' => (string) $durationSeconds,
-                'mode' => 'std',
+                'duration' => (string) ($durationSeconds ?: config('services.kling.duration', 5)),
+                'mode' => config('services.kling.mode', 'std'),
             ]);
 
         if (! $response->successful() || $response->json('code') !== 0) {
