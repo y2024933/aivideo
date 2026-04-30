@@ -16,13 +16,16 @@ class CharacterOptionsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('image_url')->label('角色圖')->width(80)->height(80),
+                Tables\Columns\ImageColumn::make('image_url')
+                    ->label('角色圖')
+                    ->width(120)
+                    ->height(120)
+                    ->getStateUsing(fn ($record) => $record->image_url ? url($record->image_url) : null),
                 Tables\Columns\TextColumn::make('prompt')->label('Prompt')->limit(50),
                 Tables\Columns\TextColumn::make('status')->label('狀態')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'gray',
-                        'processing' => 'info',
                         'done' => 'success',
                         'failed' => 'danger',
                         default => 'gray',

@@ -33,6 +33,7 @@ class EditBuildingCase extends EditRecord
         return "編輯建案：{$this->record->name}（{$status->label()}）";
     }
 
+
     protected function getHeaderActions(): array
     {
         return [

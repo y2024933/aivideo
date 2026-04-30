@@ -29,7 +29,7 @@ class ShotsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('duration_seconds')->label('秒數'),
                 Tables\Columns\TextColumn::make('scene_description')->label('場景描述')->limit(30),
                 Tables\Columns\ImageColumn::make('image_url')->label('場景圖')
-                    ->url(fn ($record) => $record->image_url, shouldOpenInNewTab: true)
+                    ->getStateUsing(fn ($record) => $record->image_url ? url($record->image_url) : null)
                     ->width(80)->height(80),
                 Tables\Columns\TextColumn::make('image_status')->label('圖片狀態')
                     ->badge()
