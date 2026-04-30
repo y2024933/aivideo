@@ -37,13 +37,25 @@ class CreateBuildingCase extends CreateRecord
                 $parser = new MarkdownScriptParser();
                 $result = $parser->parse($data['markdown_content']);
 
-                $this->form->fill([
+                $fillData = array_filter([
                     'name' => $result['name'] ?? '',
                     'builder_name' => $result['builder_name'] ?? '',
                     'character_nickname' => $result['character_nickname'] ?? '',
                     'character_dna' => $result['character_dna'] ?? '',
+                    'location' => $result['location'] ?? null,
+                    'area_range' => $result['area_range'] ?? null,
+                    'target_audience' => $result['target_audience'] ?? null,
+                    'tone' => $result['tone'] ?? null,
+                    'video_length_seconds' => $result['video_length_seconds'] ?? null,
                     'shots' => $result['shots'] ?? [],
-                ]);
+                ], fn ($v) => $v !== null);
+
+                // 如果有 meta 資料，存入 script_v2
+                if (! empty($result['meta'])) {
+                    $fillData['script_v2'] = $result['meta'];
+                }
+
+                $this->form->fill($fillData);
 
                 $shotCount = count($result['shots'] ?? []);
                 Notification::make()

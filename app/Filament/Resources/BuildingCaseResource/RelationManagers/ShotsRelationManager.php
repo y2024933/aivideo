@@ -98,11 +98,21 @@ class ShotsRelationManager extends RelationManager
                 ];
                 $selectedModel = $modelMap[$data['model'] ?? 'flux_kontext'] ?? null;
 
+                // shot 層級的 use_model 優先於 UI 選擇
+                $useModelMap = [
+                    'ideogram_v2_turbo' => \App\Services\FalKontextImageGenerator::MODEL_IDEOGRAM,
+                    'flux_kontext' => \App\Services\FalKontextImageGenerator::MODEL_KONTEXT,
+                    'flux_pro' => \App\Services\FalKontextImageGenerator::MODEL_FLUX_PRO,
+                ];
+                $finalModel = ($record->use_model && isset($useModelMap[$record->use_model]))
+                    ? $useModelMap[$record->use_model]
+                    : $selectedModel;
+
                 try {
                     $result = $imageGenerator->generateSceneImage(
                         $record->flux_prompt,
                         $referenceUrl,
-                        $selectedModel
+                        $finalModel
                     );
 
                     $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;

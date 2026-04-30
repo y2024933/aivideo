@@ -4,19 +4,27 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Symfony\Component\Yaml\Yaml;
+
 /**
  * 解析 Markdown 腳本，回傳結構化資料。
- * 支援兩種格式：
+ * 支援三種格式：
+ *   YAML) YAML frontmatter（--- 包裹）
  *   A) 分區式（鏡頭時長表 / Flux Prompt / Kling / 配音稿 / 字幕 各自獨立區塊）
  *   B) 內嵌式（每個 ### S0X 區塊內含 Bing prompt + Kling 動畫）
  */
 final class MarkdownScriptParser
 {
     /**
-     * @return array{name: string, builder_name: string, character_nickname: string, character_dna: string, shots: list<array>}
+     * @return array{name: string, builder_name: string, character_nickname: string, character_dna: string, shots: list<array>, meta?: array}
      */
     public function parse(string $mdText): array
     {
+        // 偵測 YAML frontmatter
+        if (str_starts_with(trim($mdText), '---')) {
+            return $this->parseYamlFrontmatter($mdText);
+        }
+
         $text = str_replace("\r\n", "\n", $mdText);
 
         // --- Metadata ---
@@ -79,6 +87,66 @@ final class MarkdownScriptParser
             'character_dna' => $characterDna,
             'shots' => $shots,
         ];
+    }
+
+    /**
+     * 解析 YAML frontmatter 格式的腳本。
+     */
+    private function parseYamlFrontmatter(string $text): array
+    {
+        $text = str_replace("\r\n", "\n", $text);
+
+        // 提取 --- 之間的 YAML 內容
+        if (! preg_match('/^---\s*\n([\s\S]*?)\n---/m', trim($text), $m)) {
+            return ['name' => '', 'builder_name' => '', 'character_nickname' => '', 'character_dna' => '', 'shots' => []];
+        }
+
+        $yaml = Yaml::parse($m[1]);
+
+        // 已知欄位映射
+        $knownTopKeys = [
+            'project_name', 'builder_name', 'character_nickname', 'character_dna',
+            'location', 'area_range', 'target_audience', 'tone', 'video_length_seconds',
+            'shots',
+        ];
+
+        // 收集 meta：不在已知欄位中的頂層 key
+        $meta = [];
+        foreach ($yaml as $key => $value) {
+            if (! in_array($key, $knownTopKeys, true)) {
+                $meta[$key] = $value;
+            }
+        }
+
+        // 組合 shots
+        $shots = [];
+        foreach (($yaml['shots'] ?? []) as $idx => $shot) {
+            $shots[] = [
+                'shot_id' => $shot['id'] ?? ('S' . str_pad((string) ($idx + 1), 2, '0', STR_PAD_LEFT)),
+                'shot_order' => $idx + 1,
+                'duration_seconds' => $shot['duration_sec'] ?? 5,
+                'use_model' => $shot['use_model'] ?? null,
+                'flux_prompt' => $shot['image_prompt'] ?? '',
+                'kling_prompt' => $shot['kling_prompt'] ?? '',
+                'voiceover_text' => $shot['voiceover'] ?? '',
+                'subtitle' => $shot['subtitle'] ?? '',
+                'emotion' => $shot['emotion'] ?? '',
+            ];
+        }
+
+        return array_filter([
+            'name' => $yaml['project_name'] ?? '',
+            'builder_name' => $yaml['builder_name'] ?? '',
+            'character_nickname' => $yaml['character_nickname'] ?? '',
+            'character_dna' => $yaml['character_dna'] ?? '',
+            'location' => $yaml['location'] ?? null,
+            'area_range' => $yaml['area_range'] ?? null,
+            'target_audience' => $yaml['target_audience'] ?? null,
+            'tone' => $yaml['tone'] ?? null,
+            'video_length_seconds' => $yaml['video_length_seconds'] ?? null,
+            'shots' => $shots,
+            'meta' => $meta ?: null,
+        ], fn ($v) => $v !== null);
     }
 
     // ========== 內部輔助方法 ==========

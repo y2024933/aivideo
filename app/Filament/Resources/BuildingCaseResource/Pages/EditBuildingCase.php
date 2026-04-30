@@ -64,9 +64,19 @@ class EditBuildingCase extends EditRecord
                     'builder_name' => $result['builder_name'] ?? null,
                     'character_nickname' => $result['character_nickname'] ?? null,
                     'character_dna' => $result['character_dna'] ?? null,
+                    'location' => $result['location'] ?? null,
+                    'area_range' => $result['area_range'] ?? null,
+                    'target_audience' => $result['target_audience'] ?? null,
+                    'tone' => $result['tone'] ?? null,
+                    'video_length_seconds' => $result['video_length_seconds'] ?? null,
                 ]);
                 if ($fillData) {
                     $this->record->update($fillData);
+                }
+
+                // 如果有 meta 資料，存入 script_v2
+                if (! empty($result['meta'])) {
+                    $this->record->update(['script_v2' => $result['meta']]);
                 }
 
                 // 刪除舊 shots，建立新 shots
@@ -228,12 +238,23 @@ class EditBuildingCase extends EditRecord
                 ];
                 $selectedModel = $modelMap[$data['model'] ?? 'flux_kontext'] ?? null;
 
+                $useModelMap = [
+                    'ideogram_v2_turbo' => \App\Services\FalKontextImageGenerator::MODEL_IDEOGRAM,
+                    'flux_kontext' => \App\Services\FalKontextImageGenerator::MODEL_KONTEXT,
+                    'flux_pro' => \App\Services\FalKontextImageGenerator::MODEL_FLUX_PRO,
+                ];
+
                 foreach ($shots as $shot) {
                     try {
+                        // shot 層級的 use_model 優先於 UI 選擇
+                        $shotModel = ($shot->use_model && isset($useModelMap[$shot->use_model]))
+                            ? $useModelMap[$shot->use_model]
+                            : $selectedModel;
+
                         $result = $imageGenerator->generateSceneImage(
                             $shot->flux_prompt,
                             $referenceUrl,
-                            $selectedModel
+                            $shotModel
                         );
 
                         $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;
@@ -346,7 +367,7 @@ class EditBuildingCase extends EditRecord
                         'zh-TW-HsiaoYuNeural' => '曉雨（女，清亮）',
                         'zh-TW-YunJheNeural' => '雲哲（男）',
                     ])
-                    ->default('zh-TW-HsiaoChenNeural')
+                    ->default(fn () => $this->record->script_v2['voice_id_preferred'] ?? 'zh-TW-HsiaoChenNeural')
                     ->required(),
             ])
             ->action(function (array $data) {
