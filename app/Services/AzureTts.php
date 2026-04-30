@@ -46,10 +46,9 @@ final class AzureTts implements TtsContract
             throw new RuntimeException("Azure TTS failed: HTTP {$response->status()}");
         }
 
-        // 儲存 MP3 檔案
-        Storage::makeDirectory('public/voiceovers');
+        // 儲存 MP3 檔案（用 public disk，權限正確）
         $filename = Str::uuid()->toString() . '.mp3';
-        Storage::put("public/voiceovers/{$filename}", $response->body());
+        Storage::disk('public')->put("voiceovers/{$filename}", $response->body());
 
         // 用中文字數估算時長：每字約 0.35 秒
         $charCount = mb_strlen(preg_replace('/\s+/u', '', $processedText));

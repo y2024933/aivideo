@@ -86,7 +86,7 @@ it('returns audio_url and duration_seconds on success', function () {
 });
 
 it('saves mp3 file to storage', function () {
-    Storage::fake('local');
+    Storage::fake('public');
     Http::fake([
         'eastasia.tts.speech.microsoft.com/*' => Http::response('binary-audio-content', 200),
     ]);
@@ -94,9 +94,8 @@ it('saves mp3 file to storage', function () {
     $tts = new AzureTts();
     $result = $tts->synthesize('儲存測試');
 
-    // 從 audio_url 取出檔名
     $filename = basename($result['audio_url']);
-    Storage::assertExists("public/voiceovers/{$filename}");
+    Storage::disk('public')->assertExists("voiceovers/{$filename}");
 });
 
 it('throws RuntimeException when API returns error', function () {
