@@ -48,12 +48,13 @@ it('job generates image and updates status', function () {
 
     $case->transitionTo(CaseStatus::CharacterGenerating, 'operator');
 
-    // 用 Http::fake 模擬 fal.ai 回應
+    \Illuminate\Support\Facades\Storage::fake('local');
     \Illuminate\Support\Facades\Http::fake([
         'fal.run/fal-ai/flux-pro/v1.1' => \Illuminate\Support\Facades\Http::response([
             'images' => [['url' => 'https://fal.media/test-image.jpg']],
             'request_id' => 'req_123',
         ]),
+        'fal.media/*' => \Illuminate\Support\Facades\Http::response('fake-image-data', 200, ['Content-Type' => 'image/jpeg']),
     ]);
 
     // 直接執行 job
@@ -61,7 +62,7 @@ it('job generates image and updates status', function () {
 
     $option->refresh();
     expect($option->status)->toBe('done');
-    expect($option->image_url)->toBe('https://fal.media/test-image.jpg');
+    expect($option->image_url)->toContain('/storage/characters/');
 
     $case->refresh();
     expect($case->status)->toBe(CaseStatus::CharacterPendingReview);

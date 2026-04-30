@@ -11,6 +11,7 @@ use App\Jobs\PollRemotionRenderJob;
 use App\Models\BuildingCase;
 use App\Models\Shot;
 use App\Services\Contracts\ImageGeneratorContract;
+use App\Services\ImageDownloader;
 use App\Services\Contracts\TtsContract;
 use App\Services\Contracts\VideoEditorContract;
 use App\Services\Contracts\VideoGeneratorContract;
@@ -117,10 +118,12 @@ final class BuildingCaseController
                     $approvedCharacter->image_url
                 );
 
+                $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;
+
                 $shot->update([
-                    'image_url' => $result['image_url'],
+                    'image_url' => $localUrl,
                     'image_request_id' => $result['request_id'],
-                    'image_status' => $result['image_url'] ? 'done' : 'failed',
+                    'image_status' => $localUrl ? 'done' : 'failed',
                     'image_cost_usd' => $costPerImage,
                 ]);
 
@@ -280,10 +283,12 @@ final class BuildingCaseController
                 $approvedCharacter->image_url
             );
 
+            $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;
+
             $shot->update([
-                'image_url' => $result['image_url'],
+                'image_url' => $localUrl,
                 'image_request_id' => $result['request_id'],
-                'image_status' => $result['image_url'] ? 'done' : 'failed',
+                'image_status' => $localUrl ? 'done' : 'failed',
                 'image_cost_usd' => $costPerImage,
             ]);
 

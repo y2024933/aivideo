@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\CaseStatus;
 use App\Models\BuildingCase;
 use App\Models\CharacterOption;
+use App\Services\ImageDownloader;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -58,14 +59,16 @@ final class GenerateCharacterPreviewJob implements ShouldQueue
                 return;
             }
 
-            $imageUrl = $response->json('images.0.url');
-            if (! $imageUrl) {
+            $remoteUrl = $response->json('images.0.url');
+            if (! $remoteUrl) {
                 $this->markFailed($option, 'fal.ai response missing image URL');
                 return;
             }
 
+            $localUrl = ImageDownloader::download($remoteUrl, 'characters');
+
             $option->update([
-                'image_url' => $imageUrl,
+                'image_url' => $localUrl,
                 'fal_request_id' => $response->json('request_id'),
                 'status' => 'done',
                 'cost_usd' => config('services.fal.cost_per_image', 0.05),
@@ -77,7 +80,7 @@ final class GenerateCharacterPreviewJob implements ShouldQueue
                 $this->checkAllDone($case);
             }
 
-            Log::info('[GenerateCharacterPreviewJob] done', ['option_id' => $this->characterOptionId, 'image_url' => $imageUrl]);
+            Log::info('[GenerateCharacterPreviewJob] done', ['option_id' => $this->characterOptionId, 'image_url' => $localUrl]);
 
         } catch (\Throwable $e) {
             Log::error('[GenerateCharacterPreviewJob] exception', ['error' => $e->getMessage()]);

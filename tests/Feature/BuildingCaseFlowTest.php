@@ -40,18 +40,20 @@ it('completes the full async flow: create → dispatch job → job generates →
 
     // 3. 模擬 job 執行完成
     $option = $case->characterOptions->first();
+    \Illuminate\Support\Facades\Storage::fake('local');
     Http::fake([
         'fal.run/fal-ai/flux-pro/v1.1' => Http::response([
             'images' => [['url' => 'https://fal.media/test.jpg']],
             'request_id' => 'req_test',
         ]),
+        'fal.media/*' => Http::response('fake-image', 200, ['Content-Type' => 'image/jpeg']),
     ]);
 
     (new GenerateCharacterPreviewJob($option->id, $caseId, 'chubby orange tabby cat'))->handle();
 
     $option->refresh();
     expect($option->status)->toBe('done');
-    expect($option->image_url)->toBe('https://fal.media/test.jpg');
+    expect($option->image_url)->toContain('/storage/characters/');
 
     $case->refresh();
     expect($case->status)->toBe(CaseStatus::CharacterPendingReview);
