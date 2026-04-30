@@ -26,8 +26,6 @@ class EditBuildingCase extends EditRecord
 {
     protected static string $resource = BuildingCaseResource::class;
 
-    protected static string $view = 'filament.resources.building-case-resource.pages.edit-building-case';
-
     public function getHeading(): string
     {
         $status = $this->record->status;
