@@ -48,6 +48,7 @@ it('updates shot to done when task succeeds', function () {
     expect($this->shot->video_status)->toBe('done');
     expect($this->shot->video_url)->toStartWith('/storage/videos/');
     expect($this->shot->video_url)->toEndWith('.mp4');
+    expect($this->shot->video_remote_url)->toBe('https://kling.ai/video/result.mp4');
     expect((float) $this->shot->video_cost_usd)->toBe(0.21);
 
     // 確認檔案已存入 storage

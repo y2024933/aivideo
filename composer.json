@@ -15,6 +15,7 @@
         "laravel/reverb": "^1.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "league/flysystem-aws-s3-v3": "^3.0",
         "pestphp/pest": "^2.36",
         "pestphp/pest-plugin-laravel": "^2.4",
         "spatie/laravel-data": "^4.22",

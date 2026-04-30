@@ -36,6 +36,7 @@ return [
         'region' => env('REMOTION_REGION', 'us-east-1'),
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
+        'version' => env('REMOTION_VERSION', '4.0.454'),
     ],
 
 ];

@@ -26,6 +26,8 @@ class EditBuildingCase extends EditRecord
 {
     protected static string $resource = BuildingCaseResource::class;
 
+    protected static string $view = 'filament.resources.building-case-resource.pages.edit-building-case';
+
     public function getHeading(): string
     {
         $status = $this->record->status;
@@ -38,6 +40,7 @@ class EditBuildingCase extends EditRecord
     {
         return [
             $this->importMarkdownAction(),
+            $this->downloadAssetsAction(),
             Actions\DeleteAction::make(),
         ];
     }
@@ -98,6 +101,19 @@ class EditBuildingCase extends EditRecord
 
                 $this->redirect($this->getResource()::getUrl('edit', ['record' => $this->record]));
             });
+    }
+
+    private function downloadAssetsAction(): Action
+    {
+        return Action::make('download_assets')
+            ->label('下載素材包')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('success')
+            ->url(fn () => route('building-cases.download-assets', $this->record))
+            ->openUrlInNewTab()
+            ->visible(fn () => $this->record->shots()
+                ->where(fn ($q) => $q->where('image_status', 'done')->orWhere('video_status', 'done'))
+                ->exists());
     }
 
     protected function getFormActions(): array
@@ -406,6 +422,7 @@ class EditBuildingCase extends EditRecord
                         $result = $tts->synthesize($shot->voiceover_text, $voiceName);
                         $shot->update([
                             'voiceover_url' => $result['audio_url'],
+                            'voiceover_remote_url' => $result['remote_url'] ?? null,
                             'voiceover_status' => 'done',
                             'voiceover_voice_id' => $voiceName,
                         ]);

@@ -48,7 +48,17 @@ final class AzureTts implements TtsContract
 
         // 儲存 MP3 檔案（用 public disk，權限正確）
         $filename = Str::uuid()->toString() . '.mp3';
-        Storage::disk('public')->put("voiceovers/{$filename}", $response->body());
+        $audioContent = $response->body();
+        Storage::disk('public')->put("voiceovers/{$filename}", $audioContent);
+
+        // 上傳到 S3（供 Remotion Lambda 存取）
+        $remoteUrl = null;
+        try {
+            Storage::disk('s3')->put("voiceovers/{$filename}", $audioContent, 'public');
+            $remoteUrl = Storage::disk('s3')->url("voiceovers/{$filename}");
+        } catch (\Throwable $e) {
+            Log::error('[AzureTts::synthesize] S3 上傳失敗，僅保留本地檔案', ['exception' => $e]);
+        }
 
         // 用中文字數估算時長：每字約 0.35 秒
         $charCount = mb_strlen(preg_replace('/\s+/u', '', $processedText));
@@ -58,6 +68,7 @@ final class AzureTts implements TtsContract
 
         return [
             'audio_url' => $audioUrl,
+            'remote_url' => $remoteUrl,
             'duration_seconds' => $durationSeconds,
         ];
     }

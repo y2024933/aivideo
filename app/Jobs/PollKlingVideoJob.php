@@ -65,13 +65,14 @@ final class PollKlingVideoJob implements ShouldQueue
     private function handleSucceed(Shot $shot, array $result): void
     {
         $costPerVideo = (float) config('services.kling.cost_per_video', 0.21);
+        $remoteUrl = $result['video_url'];
 
         try {
-            $localPath = VideoDownloader::download($result['video_url']);
+            $localPath = VideoDownloader::download($remoteUrl);
         } catch (\Throwable $e) {
             Log::error('[PollKlingVideoJob] Video download failed', [
                 'shot_id' => $shot->id,
-                'remote_url' => $result['video_url'],
+                'remote_url' => $remoteUrl,
                 'error' => $e->getMessage(),
             ]);
             $shot->update([
@@ -83,6 +84,7 @@ final class PollKlingVideoJob implements ShouldQueue
 
         $shot->update([
             'video_url' => $localPath,
+            'video_remote_url' => $remoteUrl,
             'video_status' => 'done',
             'video_cost_usd' => $costPerVideo,
         ]);

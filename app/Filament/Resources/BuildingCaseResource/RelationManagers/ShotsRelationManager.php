@@ -290,6 +290,7 @@ class ShotsRelationManager extends RelationManager
 
                     $record->update([
                         'voiceover_url' => $result['audio_url'],
+                        'voiceover_remote_url' => $result['remote_url'] ?? null,
                         'voiceover_status' => 'done',
                         'voiceover_voice_id' => $data['voice_name'],
                     ]);

@@ -12,6 +12,7 @@ final class StubTts implements TtsContract
     {
         return [
             'audio_url' => 'https://placehold.co/audio.mp3',
+            'remote_url' => 'https://placehold.co/audio.mp3',
             'duration_seconds' => mb_strlen($text) * 0.3,
         ];
     }

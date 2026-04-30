@@ -47,6 +47,7 @@ final class RemotionVideoEditor implements VideoEditorContract
                 'inputProps' => $inputProps,
                 'codec' => 'h264',
                 'imageFormat' => 'jpeg',
+                'version' => config('services.remotion.version', '4.0.454'),
             ]),
         ]);
 
@@ -104,12 +105,12 @@ final class RemotionVideoEditor implements VideoEditorContract
             ->sortBy('shot_order')
             ->values()
             ->map(fn ($shot) => [
-                'videoUrl' => $shot->video_url,
+                'videoUrl' => $shot->video_remote_url ?? url($shot->video_url),
                 'durationSec' => (float) $shot->duration_seconds ?: 5,
                 'clipDurationSec' => KlingVideoGenerator::normalizeDuration((int) ($shot->duration_seconds ?: 5)),
                 'subtitle' => $shot->subtitle ?? $shot->voiceover_text ?? '',
                 'isPublicFacility' => false,
-                'voiceoverUrl' => $shot->voiceover_url ? url($shot->voiceover_url) : null,
+                'voiceoverUrl' => $shot->voiceover_remote_url ?? ($shot->voiceover_url ? url($shot->voiceover_url) : null),
             ])->toArray();
 
         return [

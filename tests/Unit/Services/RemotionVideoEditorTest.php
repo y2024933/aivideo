@@ -29,9 +29,16 @@ it('submitRender returns render_id from Lambda response', function () {
         ->once()
         ->withArgs(function ($args) {
             $payload = json_decode($args['Payload'], true);
+            // 驗證 payload 包含 version 欄位
+            $hasVersion = isset($payload['version']) && $payload['version'] === '4.0.454';
+            // 驗證 inputProps shots 使用 remote URL
+            $usesRemoteUrl = isset($payload['inputProps']['shots'][0]['videoUrl'])
+                && $payload['inputProps']['shots'][0]['videoUrl'] === 'https://cdn.example.com/v1.mp4';
             return $args['FunctionName'] === 'remotion-render-test'
                 && $payload['type'] === 'start'
-                && $payload['composition'] === 'BuildingVideo';
+                && $payload['composition'] === 'BuildingVideo'
+                && $hasVersion
+                && $usesRemoteUrl;
         })
         ->andReturn(new Result(['Payload' => new Stream($stream)]));
 
@@ -45,11 +52,13 @@ it('submitRender returns render_id from Lambda response', function () {
         'shot_id' => 'S01',
         'shot_order' => 1,
         'flux_prompt' => 'test',
-        'video_url' => 'https://example.com/v1.mp4',
+        'video_url' => '/storage/videos/v1.mp4',
+        'video_remote_url' => 'https://cdn.example.com/v1.mp4',
         'video_status' => 'done',
         'duration_seconds' => 5,
         'subtitle' => '測試字幕',
         'voiceover_url' => '/storage/voiceover/test.mp3',
+        'voiceover_remote_url' => 'https://cdn.example.com/voiceover/test.mp3',
         'voiceover_status' => 'done',
     ]);
 
