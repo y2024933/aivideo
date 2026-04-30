@@ -98,6 +98,9 @@ class ShotsRelationManager extends RelationManager
                     ]);
 
                     $case->addCost($costPerImage);
+                    if ($case->final_video_url) {
+                        $case->update(['final_video_url' => null, 'render_id' => null]);
+                    }
                     Notification::make()->title("鏡頭 {$record->shot_id} 場景圖重新生成完成")->success()->send();
                 } catch (\Throwable $e) {
                     Log::error('[ShotsRelationManager::regenerateScene] 單張場景圖重跑失敗', [
@@ -147,6 +150,11 @@ class ShotsRelationManager extends RelationManager
                     ]);
 
                     PollKlingVideoJob::dispatch($record->id, $result['task_id'])->delay(now()->addSeconds(15));
+
+                    $case = $record->buildingCase;
+                    if ($case?->final_video_url) {
+                        $case->update(['final_video_url' => null, 'render_id' => null]);
+                    }
 
                     Notification::make()->title("鏡頭 {$record->shot_id} 動畫重新生成中")->body('背景處理中，請稍後刷新頁面')->success()->send();
                 } catch (\Throwable $e) {

@@ -55,20 +55,30 @@ class EditBuildingCase extends EditRecord
             ->icon('heroicon-o-sparkles')
             ->color('primary')
             ->visible(fn () => in_array($this->record->status, [CaseStatus::Draft, CaseStatus::CharacterFailed]))
-            ->requiresConfirmation()
-            ->action(function () {
+            ->form([
+                Forms\Components\TextInput::make('count')
+                    ->label('生成數量')
+                    ->numeric()
+                    ->default(4)
+                    ->minValue(1)
+                    ->maxValue(8)
+                    ->required(),
+            ])
+            ->action(function (array $data) {
                 $case = $this->record;
                 $case->transitionTo(CaseStatus::CharacterGenerating, 'operator');
                 $prompt = $case->character_dna ?? $case->name;
+                $count = (int) ($data['count'] ?? 4);
 
-                $option = $case->characterOptions()->create([
-                    'prompt' => $prompt,
-                    'status' => 'pending',
-                ]);
+                for ($i = 0; $i < $count; $i++) {
+                    $option = $case->characterOptions()->create([
+                        'prompt' => $prompt,
+                        'status' => 'pending',
+                    ]);
+                    GenerateCharacterPreviewJob::dispatch($option->id, $case->id, $prompt);
+                }
 
-                GenerateCharacterPreviewJob::dispatch($option->id, $case->id, $prompt);
-
-                Notification::make()->title('角色預覽生成中')->body('背景處理中，請稍後刷新頁面')->success()->send();
+                Notification::make()->title('角色預覽生成中')->body("正在生成 {$count} 張，請稍後刷新頁面")->success()->send();
                 $this->refreshFormData(['status']);
             });
     }
@@ -301,7 +311,8 @@ class EditBuildingCase extends EditRecord
             ->color('warning')
             ->visible(fn () => $this->record->shots()->where('video_status', '!=', 'done')->count() === 0
                 && $this->record->voiceover?->audio_url
-                && ! $this->record->final_video_url)
+                && ! $this->record->final_video_url
+                && ! $this->record->render_id)
             ->requiresConfirmation()
             ->action(function () {
                 $case = $this->record;

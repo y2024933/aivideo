@@ -31,7 +31,7 @@ final class MarkdownScriptParser
         $durationMap = $this->parseDurationTable($text);
 
         // --- 偵測格式：分區式 or 內嵌式 ---
-        $hasFluxSection = (bool) preg_match('/##[^#]*(?:Flux|Bing\/Flux)\s*Prompt/i', $text);
+        $hasFluxSection = (bool) preg_match('/##[^#]*(?:Flux|Bing\/Flux|Bing)\s*[Pp]rompt/iu', $text);
         $hasKlingSection = (bool) preg_match('/##[^#]*Kling\s*動畫/i', $text);
 
         $fluxMap = [];
@@ -148,7 +148,7 @@ final class MarkdownScriptParser
     /** 格式 A：解析分區式 Flux Prompt 區塊 */
     private function parseFluxSection(string $text): array
     {
-        $section = $this->findSection($text, '/(?:Flux|Bing\/Flux)\s*Prompt/i');
+        $section = $this->findSection($text, '/(?:Flux|Bing\/Flux|Bing)\s*[Pp]rompt/iu');
         if ($section === null) {
             return [];
         }
