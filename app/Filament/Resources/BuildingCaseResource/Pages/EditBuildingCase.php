@@ -60,7 +60,7 @@ class EditBuildingCase extends EditRecord
                 Forms\Components\TextInput::make('count')
                     ->label('生成數量')
                     ->numeric()
-                    ->default(4)
+                    ->default(1)
                     ->minValue(1)
                     ->maxValue(8)
                     ->required(),
