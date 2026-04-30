@@ -115,6 +115,30 @@ class BuildingCaseResource extends Resource
                     ])
                     ->hiddenOn('create'),
 
+                // 成品影片（僅編輯時顯示）
+                Forms\Components\Section::make('成品影片')
+                    ->schema([
+                        Forms\Components\Placeholder::make('final_video_preview')
+                            ->label('')
+                            ->content(function ($record) {
+                                if (! $record?->final_video_url) {
+                                    if ($record?->render_id) {
+                                        return '影片渲染中，請稍後刷新...';
+                                    }
+                                    return '尚未渲染。點下方「渲染最終影片」按鈕。';
+                                }
+                                $url = url($record->final_video_url);
+                                return new \Illuminate\Support\HtmlString(
+                                    "<div style='text-align:center'>"
+                                    . "<video controls style='max-width:100%;max-height:500px;border-radius:8px'><source src='{$url}' type='video/mp4'></video>"
+                                    . "<p style='margin-top:12px'><a href='{$url}' download style='color:#4f46e5;text-decoration:underline'>下載影片</a>"
+                                    . " ／ 費用：\$" . number_format((float) $record->cost_usd, 2) . " USD</p>"
+                                    . "</div>"
+                                );
+                            }),
+                    ])
+                    ->hiddenOn('create'),
+
                 // Shots Repeater（透過 relationship 自動同步）
                 Forms\Components\Section::make('分鏡腳本')->schema([
                     Forms\Components\Repeater::make('shots')->relationship()->schema([
