@@ -59,7 +59,7 @@ final class PollRemotionRenderJob implements ShouldQueue
 
     private function handleCompleted(BuildingCase $case, array $result): void
     {
-        $case->update(['final_video_url' => $result['video_url']]);
+        $case->update(['final_video_url' => $result['video_url'], 'render_id' => null]);
         $case->transitionTo(CaseStatus::FinalPendingReview, 'system');
     }
 

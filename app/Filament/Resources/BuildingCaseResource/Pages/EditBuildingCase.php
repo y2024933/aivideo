@@ -432,7 +432,7 @@ class EditBuildingCase extends EditRecord
                             'shot_id' => $shot->shot_id,
                             'exception' => $e,
                         ]);
-                        $shot->update(['voiceover_status' => 'failed', 'voiceover_url' => null]);
+                        $shot->update(['voiceover_status' => 'failed', 'voiceover_url' => null, 'voiceover_remote_url' => null]);
                         $failCount++;
                     }
                 }

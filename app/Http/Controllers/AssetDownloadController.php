@@ -15,7 +15,11 @@ final class AssetDownloadController extends Controller
     {
         $shots = $buildingCase->shots()->orderBy('shot_order')->get();
 
-        $zipPath = storage_path("app/private/{$buildingCase->id}_assets.zip");
+        $dir = storage_path('app/private');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $zipPath = "{$dir}/{$buildingCase->id}_assets.zip";
         $zip = new ZipArchive();
 
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -103,12 +107,12 @@ final class AssetDownloadController extends Controller
         $offset = 0.0;
 
         foreach ($shots as $shot) {
+            $duration = (float) ($shot->duration_seconds ?: 5);
+
             if (blank($shot->subtitle)) {
-                $offset += (float) ($shot->duration_seconds ?: 0);
+                $offset += $duration;
                 continue;
             }
-
-            $duration = (float) ($shot->duration_seconds ?: 5);
             $start = $offset;
             $end = $offset + $duration;
 

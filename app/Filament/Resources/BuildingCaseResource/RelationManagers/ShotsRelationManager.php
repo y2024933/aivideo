@@ -308,7 +308,7 @@ class ShotsRelationManager extends RelationManager
                         'exception' => $e,
                     ]);
 
-                    $record->update(['voiceover_status' => 'failed']);
+                    $record->update(['voiceover_status' => 'failed', 'voiceover_url' => null, 'voiceover_remote_url' => null]);
                     Notification::make()->title('配音生成失敗')->danger()->send();
                 }
             });
