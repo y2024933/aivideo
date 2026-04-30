@@ -23,7 +23,16 @@ class CharacterOptionsRelationManager extends RelationManager
                     ->label('角色圖')
                     ->width(120)
                     ->height(120)
-                    ->getStateUsing(fn ($record) => $record->image_url ? url($record->image_url) : null),
+                    ->getStateUsing(fn ($record) => $record->image_url ? url($record->image_url) : null)
+                    ->action(
+                        Tables\Actions\Action::make('view_image')
+                            ->modalContent(fn ($record) => new \Illuminate\Support\HtmlString(
+                                '<div style="text-align:center"><img src="' . url($record->image_url) . '" style="max-width:100%;max-height:80vh;border-radius:8px;" /></div>'
+                            ))
+                            ->modalHeading('角色預覽')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('關閉')
+                    ),
                 Tables\Columns\TextColumn::make('prompt')->label('Prompt')->limit(50),
                 Tables\Columns\TextColumn::make('status')->label('狀態')
                     ->badge()
