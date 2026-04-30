@@ -50,6 +50,18 @@ class BuildingCaseResource extends Resource
                 Forms\Components\Section::make('角色設定')->schema([
                     Forms\Components\TextInput::make('character_nickname')->label('角色暱稱'),
                     Forms\Components\Textarea::make('character_dna')->label('角色 DNA（英文 prompt）')->rows(4),
+                    Forms\Components\Placeholder::make('approved_character_preview')
+                        ->label('已核准角色')
+                        ->content(function ($record) {
+                            if (! $record?->approvedCharacter?->image_url) {
+                                return '尚未選擇角色';
+                            }
+                            $url = url($record->approvedCharacter->image_url);
+                            return new \Illuminate\Support\HtmlString(
+                                "<img src=\"{$url}\" alt=\"已核准角色\" style=\"max-width: 200px; border-radius: 8px;\">"
+                            );
+                        })
+                        ->hiddenOn('create'),
                 ]),
 
                 Forms\Components\Section::make('故事設定')->schema([
