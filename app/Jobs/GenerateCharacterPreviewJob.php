@@ -69,6 +69,7 @@ final class GenerateCharacterPreviewJob implements ShouldQueue
 
             $option->update([
                 'image_url' => $localUrl,
+                'remote_url' => $remoteUrl,
                 'fal_request_id' => $response->json('request_id'),
                 'status' => 'done',
                 'cost_usd' => config('services.fal.cost_per_image', 0.05),

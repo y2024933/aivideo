@@ -81,11 +81,12 @@ class ShotsRelationManager extends RelationManager
 
                 $imageGenerator = app(ImageGeneratorContract::class);
                 $costPerImage = (float) config('services.fal.cost_per_image');
+                $referenceUrl = $approvedCharacter->remote_url ?? $approvedCharacter->image_url;
 
                 try {
                     $result = $imageGenerator->generateSceneImage(
                         $record->flux_prompt,
-                        $approvedCharacter->image_url
+                        $referenceUrl
                     );
 
                     $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;

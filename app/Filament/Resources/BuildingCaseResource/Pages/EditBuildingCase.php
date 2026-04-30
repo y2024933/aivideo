@@ -199,7 +199,8 @@ class EditBuildingCase extends EditRecord
                 $case = $this->record;
                 $approvedCharacter = $case->approvedCharacter;
 
-                if (! $approvedCharacter?->image_url) {
+                $referenceUrl = $approvedCharacter?->remote_url ?? $approvedCharacter?->image_url;
+                if (! $referenceUrl) {
                     Notification::make()->title('尚未核准角色或角色無圖片')->danger()->send();
                     return;
                 }
@@ -207,7 +208,7 @@ class EditBuildingCase extends EditRecord
                 $case->transitionTo(CaseStatus::ImagesGenerating, 'operator');
 
                 $imageGenerator = app(ImageGeneratorContract::class);
-                $shots = $case->shots()->whereIn('image_status', ['pending', 'failed'])->get();
+                $shots = $case->shots()->whereIn('image_status', ['pending', 'failed'])->whereNotNull('flux_prompt')->where('flux_prompt', '!=', '')->get();
                 $costPerImage = (float) config('services.fal.cost_per_image');
                 $totalCost = 0.0;
                 $hasFailure = false;
@@ -216,7 +217,7 @@ class EditBuildingCase extends EditRecord
                     try {
                         $result = $imageGenerator->generateSceneImage(
                             $shot->flux_prompt,
-                            $approvedCharacter->image_url
+                            $referenceUrl
                         );
 
                         $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;
