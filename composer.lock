@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "035b254313cc6a8760037016ec41fe61",
+    "content-hash": "f9344074fd466577ced0abcd089819c4",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -7870,6 +7870,44 @@
                 }
             ],
             "time": "2024-06-11T12:45:25+00:00"
+        },
+        {
+            "name": "remotion/lambda",
+            "version": "4.0.454",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/remotion-dev/lambda-php-sdk.git",
+                "reference": "e7ccf9dc34887ae869e20679d28e594564ae15ea"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/remotion-dev/lambda-php-sdk/zipball/e7ccf9dc34887ae869e20679d28e594564ae15ea",
+                "reference": "e7ccf9dc34887ae869e20679d28e594564ae15ea",
+                "shasum": ""
+            },
+            "require": {
+                "aws/aws-sdk-php": "^3.269"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^10.1 || ^12.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Remotion\\LambdaPhp\\": "src/",
+                    "Remotion\\LambdaPhp\\Tests\\": "tests/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "proprietary"
+            ],
+            "description": "A PHP library for working with Remotion Lambda",
+            "support": {
+                "issues": "https://github.com/remotion-dev/lambda-php-sdk/issues",
+                "source": "https://github.com/remotion-dev/lambda-php-sdk/tree/4.0.454"
+            },
+            "time": "2026-04-28T18:12:30+00:00"
         },
         {
             "name": "ryangjchandler/blade-capture-directive",

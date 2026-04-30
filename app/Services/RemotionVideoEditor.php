@@ -6,12 +6,12 @@ namespace App\Services;
 
 use App\Models\BuildingCase;
 use App\Services\Contracts\VideoEditorContract;
-use Aws\Lambda\LambdaClient;
 use Illuminate\Support\Facades\Log;
+use Remotion\LambdaPhp\PHPClient;
+use Remotion\LambdaPhp\RenderParams;
 
 final class RemotionVideoEditor implements VideoEditorContract
 {
-    private LambdaClient $lambda;
     private readonly string $functionName;
     private readonly string $serveUrl;
     private readonly string $region;
@@ -23,83 +23,112 @@ final class RemotionVideoEditor implements VideoEditorContract
             ?? throw new \RuntimeException('REMOTION_FUNCTION_NAME is not configured');
         $this->serveUrl = config('services.remotion.serve_url')
             ?? throw new \RuntimeException('REMOTION_SERVE_URL is not configured');
-
-        $this->lambda = new LambdaClient([
-            'region' => $this->region,
-            'version' => 'latest',
-            'credentials' => [
-                'key' => config('services.remotion.key'),
-                'secret' => config('services.remotion.secret'),
-            ],
-        ]);
     }
 
     public function submitRender(BuildingCase $case): array
     {
         $inputProps = $this->buildInputProps($case);
 
-        $result = $this->lambda->invoke([
-            'FunctionName' => $this->functionName,
-            'Payload' => json_encode([
-                'type' => 'start',
-                'serveUrl' => $this->serveUrl,
-                'composition' => 'BuildingVideo',
-                'inputProps' => $inputProps,
-                'codec' => 'h264',
-                'imageFormat' => 'jpeg',
-                'version' => config('services.remotion.version', '4.0.454'),
-            ]),
-        ]);
+        $client = $this->makeClient();
 
-        $payload = json_decode($result['Payload']->getContents(), true);
+        $params = new RenderParams();
+        $params->setComposition('BuildingVideo');
+        $params->setInputProps($inputProps);
+        $params->setCodec('h264');
 
-        if (empty($payload['renderId'])) {
-            Log::error('[RemotionVideoEditor::submitRender] Lambda 回傳無 renderId', ['payload' => $payload]);
+        $response = $client->renderMediaOnLambda($params);
+
+        if (empty($response->renderId)) {
+            Log::error('[RemotionVideoEditor::submitRender] 回傳無 renderId', ['response' => (array) $response]);
             throw new \RuntimeException('Remotion Lambda submit failed: no renderId returned');
         }
 
-        return ['render_id' => $payload['renderId']];
+        // 將 renderId + bucketName 編碼為 JSON 存入 render_id 欄位
+        $renderData = json_encode([
+            'renderId' => $response->renderId,
+            'bucketName' => $response->bucketName,
+        ]);
+
+        return ['render_id' => $renderData];
     }
 
     public function queryRenderStatus(string $renderId): array
     {
-        $result = $this->lambda->invoke([
-            'FunctionName' => $this->functionName,
-            'Payload' => json_encode([
-                'type' => 'status',
-                'renderId' => $renderId,
-                'bucketName' => $this->extractBucketName(),
-                'version' => config('services.remotion.version', '4.0.454'),
-            ]),
-        ]);
+        // 解碼 JSON 格式的 render_id（包含 renderId + bucketName）
+        $data = json_decode($renderId, true);
+
+        if (! is_array($data) || empty($data['renderId']) || empty($data['bucketName'])) {
+            // 向下相容：如果是純字串 renderId，用 extractBucketName 取得 bucket
+            $actualRenderId = $renderId;
+            $bucketName = $this->extractBucketName();
+        } else {
+            $actualRenderId = $data['renderId'];
+            $bucketName = $data['bucketName'];
+        }
+
+        $client = $this->makeClient();
+        $progress = $client->getRenderProgress($actualRenderId, $bucketName);
 
         Log::info('[RemotionVideoEditor::queryRenderStatus]', [
-            'renderId' => $renderId,
-            'payload' => json_decode($result['Payload']->getContents(), true),
+            'renderId' => $actualRenderId,
+            'done' => $progress->done,
+            'overallProgress' => $progress->overallProgress,
+            'fatalErrorEncountered' => $progress->fatalErrorEncountered,
         ]);
 
-        // 重新讀取 payload（getContents 只能讀一次）
-        $result['Payload']->rewind();
-
-        $payload = json_decode($result['Payload']->getContents(), true);
-
-        return match ($payload['type'] ?? null) {
-            'success' => [
-                'status' => 'completed',
-                'video_url' => $payload['outputUrl'] ?? $payload['url'] ?? null,
-                'error' => null,
-            ],
-            'error' => [
+        if ($progress->fatalErrorEncountered) {
+            return [
                 'status' => 'failed',
                 'video_url' => null,
-                'error' => $payload['message'] ?? 'Remotion render failed',
-            ],
-            default => [
-                'status' => 'rendering',
-                'video_url' => null,
+                'error' => 'Remotion render encountered a fatal error',
+            ];
+        }
+
+        if ($progress->done) {
+            return [
+                'status' => 'completed',
+                'video_url' => $progress->outputFile,
                 'error' => null,
-            ],
-        };
+            ];
+        }
+
+        return [
+            'status' => 'rendering',
+            'video_url' => null,
+            'error' => null,
+        ];
+    }
+
+    /**
+     * 建立 Remotion PHPClient（測試時可透過 setClient 注入 mock）
+     */
+    private ?PHPClient $client = null;
+
+    public function setClient(PHPClient $client): void
+    {
+        $this->client = $client;
+    }
+
+    protected function makeClient(): PHPClient
+    {
+        if ($this->client) {
+            return $this->client;
+        }
+
+        $key = config('services.remotion.key');
+        $secret = config('services.remotion.secret');
+
+        // 若有明確設定 credentials，傳入 callable；否則傳 null 讓 SDK 用預設 credential chain
+        $credential = ($key && $secret)
+            ? fn () => new \Aws\Credentials\Credentials($key, $secret)
+            : null;
+
+        return new PHPClient(
+            $this->region,
+            $this->serveUrl,
+            $this->functionName,
+            $credential,
+        );
     }
 
     /**
@@ -137,11 +166,10 @@ final class RemotionVideoEditor implements VideoEditorContract
     }
 
     /**
-     * 從 serve_url 推導 bucket name（Remotion 慣例）
+     * 從 serve_url 推導 bucket name（向下相容用）
      */
     private function extractBucketName(): string
     {
-        // Remotion Lambda 的 serve URL 格式：https://{bucket}.s3.{region}.amazonaws.com/...
         $parsed = parse_url($this->serveUrl, PHP_URL_HOST);
 
         return $parsed ? explode('.', $parsed)[0] : 'remotionlambda-' . $this->region;

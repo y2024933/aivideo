@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Models\BuildingCase;
 use App\Services\RemotionVideoEditor;
-use Aws\Lambda\LambdaClient;
-use Aws\Result;
-use GuzzleHttp\Psr7\Stream;
+use Remotion\LambdaPhp\GetRenderProgressResponse;
+use Remotion\LambdaPhp\PHPClient;
+use Remotion\LambdaPhp\RenderMediaOnLambdaResponse;
 
 beforeEach(function () {
     config([
@@ -19,33 +19,18 @@ beforeEach(function () {
 });
 
 it('submitRender returns render_id from Lambda response', function () {
-    $mockPayload = json_encode(['renderId' => 'render_abc123']);
-    $stream = fopen('php://memory', 'r+');
-    fwrite($stream, $mockPayload);
-    rewind($stream);
+    $renderResponse = new RenderMediaOnLambdaResponse();
+    $renderResponse->type = 'success';
+    $renderResponse->renderId = 'render_abc123';
+    $renderResponse->bucketName = 'remotionlambda-useast1-abc';
 
-    $mockLambda = Mockery::mock(LambdaClient::class);
-    $mockLambda->shouldReceive('invoke')
+    $mockClient = Mockery::mock(PHPClient::class);
+    $mockClient->shouldReceive('renderMediaOnLambda')
         ->once()
-        ->withArgs(function ($args) {
-            $payload = json_decode($args['Payload'], true);
-            // 驗證 payload 包含 version 欄位
-            $hasVersion = isset($payload['version']) && $payload['version'] === '4.0.454';
-            // 驗證 inputProps shots 使用 remote URL
-            $usesRemoteUrl = isset($payload['inputProps']['shots'][0]['videoUrl'])
-                && $payload['inputProps']['shots'][0]['videoUrl'] === 'https://cdn.example.com/v1.mp4';
-            return $args['FunctionName'] === 'remotion-render-test'
-                && $payload['type'] === 'start'
-                && $payload['composition'] === 'BuildingVideo'
-                && $hasVersion
-                && $usesRemoteUrl;
-        })
-        ->andReturn(new Result(['Payload' => new Stream($stream)]));
+        ->andReturn($renderResponse);
 
     $editor = new RemotionVideoEditor();
-    // 透過 Reflection 注入 mock
-    $ref = new ReflectionProperty($editor, 'lambda');
-    $ref->setValue($editor, $mockLambda);
+    $editor->setClient($mockClient);
 
     $case = BuildingCase::create(['name' => '渲染測試']);
     $case->shots()->create([
@@ -64,74 +49,101 @@ it('submitRender returns render_id from Lambda response', function () {
 
     $result = $editor->submitRender($case);
 
-    expect($result)->toBe(['render_id' => 'render_abc123']);
+    $decoded = json_decode($result['render_id'], true);
+    expect($decoded['renderId'])->toBe('render_abc123');
+    expect($decoded['bucketName'])->toBe('remotionlambda-useast1-abc');
 });
 
-it('queryRenderStatus returns completed when Lambda returns success', function () {
-    $mockPayload = json_encode([
-        'type' => 'success',
-        'outputUrl' => 'https://s3.example.com/output.mp4',
-    ]);
-    $stream = fopen('php://memory', 'r+');
-    fwrite($stream, $mockPayload);
-    rewind($stream);
+it('queryRenderStatus returns completed when render is done', function () {
+    $progressResponse = new GetRenderProgressResponse();
+    $progressResponse->done = true;
+    $progressResponse->overallProgress = 1.0;
+    $progressResponse->fatalErrorEncountered = false;
+    $progressResponse->outputFile = 'https://s3.example.com/output.mp4';
+    $progressResponse->chunks = 10;
+    $progressResponse->lambdasInvoked = 5;
+    $progressResponse->renderSize = 1024000;
+    $progressResponse->currentTime = 1000;
+    $progressResponse->timeToFinish = null;
+    $progressResponse->outBucket = 'remotionlambda-useast1-abc';
+    $progressResponse->outKey = 'renders/render_abc123/out.mp4';
+    $progressResponse->bucket = 'remotionlambda-useast1-abc';
+    $progressResponse->type = 'progress';
 
-    $mockLambda = Mockery::mock(LambdaClient::class);
-    $mockLambda->shouldReceive('invoke')
+    $mockClient = Mockery::mock(PHPClient::class);
+    $mockClient->shouldReceive('getRenderProgress')
         ->once()
-        ->andReturn(new Result(['Payload' => new Stream($stream)]));
+        ->with('render_abc123', 'remotionlambda-useast1-abc')
+        ->andReturn($progressResponse);
 
     $editor = new RemotionVideoEditor();
-    $ref = new ReflectionProperty($editor, 'lambda');
-    $ref->setValue($editor, $mockLambda);
+    $editor->setClient($mockClient);
 
-    $result = $editor->queryRenderStatus('render_abc123');
+    $renderData = json_encode(['renderId' => 'render_abc123', 'bucketName' => 'remotionlambda-useast1-abc']);
+    $result = $editor->queryRenderStatus($renderData);
 
     expect($result['status'])->toBe('completed');
     expect($result['video_url'])->toBe('https://s3.example.com/output.mp4');
     expect($result['error'])->toBeNull();
 });
 
-it('queryRenderStatus returns failed when Lambda returns error', function () {
-    $mockPayload = json_encode([
-        'type' => 'error',
-        'message' => 'Out of memory',
-    ]);
-    $stream = fopen('php://memory', 'r+');
-    fwrite($stream, $mockPayload);
-    rewind($stream);
+it('queryRenderStatus returns failed when fatal error encountered', function () {
+    $progressResponse = new GetRenderProgressResponse();
+    $progressResponse->done = false;
+    $progressResponse->overallProgress = 0.3;
+    $progressResponse->fatalErrorEncountered = true;
+    $progressResponse->outputFile = null;
+    $progressResponse->chunks = 3;
+    $progressResponse->lambdasInvoked = 5;
+    $progressResponse->renderSize = 0;
+    $progressResponse->currentTime = 500;
+    $progressResponse->timeToFinish = null;
+    $progressResponse->outBucket = null;
+    $progressResponse->outKey = null;
+    $progressResponse->bucket = 'remotionlambda-useast1-abc';
+    $progressResponse->type = 'progress';
 
-    $mockLambda = Mockery::mock(LambdaClient::class);
-    $mockLambda->shouldReceive('invoke')
+    $mockClient = Mockery::mock(PHPClient::class);
+    $mockClient->shouldReceive('getRenderProgress')
         ->once()
-        ->andReturn(new Result(['Payload' => new Stream($stream)]));
+        ->andReturn($progressResponse);
 
     $editor = new RemotionVideoEditor();
-    $ref = new ReflectionProperty($editor, 'lambda');
-    $ref->setValue($editor, $mockLambda);
+    $editor->setClient($mockClient);
 
-    $result = $editor->queryRenderStatus('render_fail');
+    $renderData = json_encode(['renderId' => 'render_fail', 'bucketName' => 'remotionlambda-useast1-abc']);
+    $result = $editor->queryRenderStatus($renderData);
 
     expect($result['status'])->toBe('failed');
-    expect($result['error'])->toBe('Out of memory');
+    expect($result['error'])->toBe('Remotion render encountered a fatal error');
 });
 
-it('queryRenderStatus returns rendering when Lambda returns pending', function () {
-    $mockPayload = json_encode(['type' => 'progress', 'progress' => 0.5]);
-    $stream = fopen('php://memory', 'r+');
-    fwrite($stream, $mockPayload);
-    rewind($stream);
+it('queryRenderStatus returns rendering when in progress', function () {
+    $progressResponse = new GetRenderProgressResponse();
+    $progressResponse->done = false;
+    $progressResponse->overallProgress = 0.5;
+    $progressResponse->fatalErrorEncountered = false;
+    $progressResponse->outputFile = null;
+    $progressResponse->chunks = 5;
+    $progressResponse->lambdasInvoked = 5;
+    $progressResponse->renderSize = 512000;
+    $progressResponse->currentTime = 500;
+    $progressResponse->timeToFinish = 10;
+    $progressResponse->outBucket = null;
+    $progressResponse->outKey = null;
+    $progressResponse->bucket = 'remotionlambda-useast1-abc';
+    $progressResponse->type = 'progress';
 
-    $mockLambda = Mockery::mock(LambdaClient::class);
-    $mockLambda->shouldReceive('invoke')
+    $mockClient = Mockery::mock(PHPClient::class);
+    $mockClient->shouldReceive('getRenderProgress')
         ->once()
-        ->andReturn(new Result(['Payload' => new Stream($stream)]));
+        ->andReturn($progressResponse);
 
     $editor = new RemotionVideoEditor();
-    $ref = new ReflectionProperty($editor, 'lambda');
-    $ref->setValue($editor, $mockLambda);
+    $editor->setClient($mockClient);
 
-    $result = $editor->queryRenderStatus('render_pending');
+    $renderData = json_encode(['renderId' => 'render_pending', 'bucketName' => 'remotionlambda-useast1-abc']);
+    $result = $editor->queryRenderStatus($renderData);
 
     expect($result['status'])->toBe('rendering');
     expect($result['video_url'])->toBeNull();

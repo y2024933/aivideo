@@ -18,6 +18,7 @@
         "league/flysystem-aws-s3-v3": "^3.0",
         "pestphp/pest": "^2.36",
         "pestphp/pest-plugin-laravel": "^2.4",
+        "remotion/lambda": "^4.0",
         "spatie/laravel-data": "^4.22",
         "symfony/yaml": "^7.4"
     },
