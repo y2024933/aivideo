@@ -108,9 +108,12 @@ class ShotsRelationManager extends RelationManager
                     ? $useModelMap[$record->use_model]
                     : $selectedModel;
 
-                // 替換 prompt 中的 [松松DNA v2] 等佔位符為完整 DNA
+                // 只替換簡單的 [XXX DNA] 佔位符（不含冒號的，保留 shot 級 variant）
                 $characterDna = $case->character_dna ?? '';
-                $prompt = preg_replace('/\[.*?DNA.*?\]/u', $characterDna, $record->flux_prompt ?? '');
+                $prompt = $record->flux_prompt ?? '';
+                if ($characterDna && preg_match('/\[[^\]]*DNA[^\]:]*\]/u', $prompt)) {
+                    $prompt = preg_replace('/\[[^\]]*DNA[^\]:]*\]/u', $characterDna, $prompt);
+                }
 
                 try {
                     $result = $imageGenerator->generateSceneImage(

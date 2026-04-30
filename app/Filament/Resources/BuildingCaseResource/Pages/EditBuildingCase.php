@@ -244,7 +244,6 @@ class EditBuildingCase extends EditRecord
                     'flux_pro' => \App\Services\FalKontextImageGenerator::MODEL_FLUX_PRO,
                 ];
 
-                // 角色 DNA 替換 prompt 中的佔位符
                 $characterDna = $case->character_dna ?? '';
 
                 foreach ($shots as $shot) {
@@ -254,8 +253,11 @@ class EditBuildingCase extends EditRecord
                             ? $useModelMap[$shot->use_model]
                             : $selectedModel;
 
-                        // 替換 prompt 中的 [松松DNA v2] 等佔位符為完整 DNA
-                        $prompt = preg_replace('/\[.*?DNA.*?\]/u', $characterDna, $shot->flux_prompt);
+                        // 只替換簡單的 [XXX DNA] 或 [XXX DNA v2] 佔位符（不含冒號的）
+                        $prompt = $shot->flux_prompt;
+                        if ($characterDna && preg_match('/\[[^\]]*DNA[^\]:]*\]/u', $prompt)) {
+                            $prompt = preg_replace('/\[[^\]]*DNA[^\]:]*\]/u', $characterDna, $prompt);
+                        }
 
                         $result = $imageGenerator->generateSceneImage(
                             $prompt,
