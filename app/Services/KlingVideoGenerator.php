@@ -12,7 +12,7 @@ use RuntimeException;
 
 final class KlingVideoGenerator implements VideoGeneratorContract
 {
-    private const BASE_URL = 'https://api-beijing.klingai.com/v1/videos/image2video';
+    private const BASE_URL = 'https://api.klingai.com/v1/videos/image2video';
 
     private string $accessKey;
     private string $secretKey;
@@ -28,11 +28,20 @@ final class KlingVideoGenerator implements VideoGeneratorContract
     /** @inheritDoc */
     public function submitImageToVideo(string $imageUrl, string $prompt, int $durationSeconds = 5): array
     {
+        // 本地路徑轉 base64（Kling 需要公開 URL 或 base64）
+        $imageRef = $imageUrl;
+        if (str_starts_with($imageUrl, '/storage/') || str_starts_with($imageUrl, 'http://localhost')) {
+            $localPath = storage_path('app/public/' . preg_replace('#^/storage/#', '', $imageUrl));
+            if (file_exists($localPath)) {
+                $imageRef = base64_encode(file_get_contents($localPath));
+            }
+        }
+
         $response = Http::withHeaders($this->headers())
             ->timeout(30)
             ->post(self::BASE_URL, [
                 'model_name' => config('services.kling.model', 'kling-v2-5-turbo'),
-                'image' => $imageUrl,
+                'image' => $imageRef,
                 'prompt' => $prompt,
                 'duration' => (string) self::normalizeDuration($durationSeconds),
                 'mode' => config('services.kling.mode', 'std'),

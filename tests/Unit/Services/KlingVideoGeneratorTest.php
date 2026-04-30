@@ -14,7 +14,7 @@ beforeEach(function () {
 
 it('submits image to video and returns task_id', function () {
     Http::fake([
-        'api-beijing.klingai.com/v1/videos/image2video' => Http::response([
+        'api.klingai.com/v1/videos/image2video' => Http::response([
             'code' => 0,
             'data' => ['task_id' => 'task_abc123'],
         ]),
@@ -28,7 +28,7 @@ it('submits image to video and returns task_id', function () {
 
 it('queries task status and returns succeed result', function () {
     Http::fake([
-        'api-beijing.klingai.com/v1/videos/image2video/task_abc123' => Http::response([
+        'api.klingai.com/v1/videos/image2video/task_abc123' => Http::response([
             'code' => 0,
             'data' => [
                 'task_status' => 'succeed',
@@ -49,7 +49,7 @@ it('queries task status and returns succeed result', function () {
 
 it('returns failed status when API returns error', function () {
     Http::fake([
-        'api-beijing.klingai.com/v1/videos/image2video/task_fail' => Http::response([
+        'api.klingai.com/v1/videos/image2video/task_fail' => Http::response([
             'code' => 1001,
             'message' => 'task not found',
         ], 400),
@@ -64,7 +64,7 @@ it('returns failed status when API returns error', function () {
 
 it('throws RuntimeException when submit fails', function () {
     Http::fake([
-        'api-beijing.klingai.com/v1/videos/image2video' => Http::response(['code' => 500], 500),
+        'api.klingai.com/v1/videos/image2video' => Http::response(['code' => 500], 500),
     ]);
 
     $generator = new KlingVideoGenerator();
@@ -73,7 +73,7 @@ it('throws RuntimeException when submit fails', function () {
 
 it('sends JWT Authorization header with Bearer prefix', function () {
     Http::fake([
-        'api-beijing.klingai.com/v1/videos/image2video' => Http::response([
+        'api.klingai.com/v1/videos/image2video' => Http::response([
             'code' => 0,
             'data' => ['task_id' => 'task_jwt'],
         ]),
