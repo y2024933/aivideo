@@ -264,7 +264,9 @@ class EditBuildingCase extends EditRecord
                     $case->addCost($totalCost);
                 }
 
-                $newStatus = $hasFailure ? CaseStatus::ImagesPartial : CaseStatus::ImagesPendingReview;
+                // 檢查是否還有 pending 的 shot（包括沒有 prompt 的）
+                $remainingPending = $case->shots()->whereIn('image_status', ['pending', 'failed'])->count();
+                $newStatus = ($hasFailure || $remainingPending > 0) ? CaseStatus::ImagesPartial : CaseStatus::ImagesPendingReview;
                 $case->transitionTo($newStatus, 'system');
 
                 $message = $hasFailure ? '部分場景圖生成失敗，請檢查後重試' : '場景圖全部生成完成';

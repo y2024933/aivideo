@@ -83,7 +83,7 @@ class ShotsRelationManager extends RelationManager
                 $case = $this->getOwnerRecord();
                 $approvedCharacter = $case->approvedCharacter;
 
-                if (! $approvedCharacter?->image_url) {
+                if (! $approvedCharacter?->image_url && ! $approvedCharacter?->remote_url) {
                     Notification::make()->title('尚未核准角色或角色無圖片')->danger()->send();
                     return;
                 }
