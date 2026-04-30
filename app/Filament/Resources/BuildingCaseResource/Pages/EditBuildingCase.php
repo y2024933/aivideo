@@ -84,7 +84,7 @@ class EditBuildingCase extends EditRecord
                     ->success()
                     ->send();
 
-                $this->fillForm();
+                $this->redirect($this->getResource()::getUrl('edit', ['record' => $this->record]));
             });
     }
 
