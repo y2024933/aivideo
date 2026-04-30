@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Shot;
 use App\Services\Contracts\VideoGeneratorContract;
+use App\Services\VideoDownloader;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -65,8 +66,23 @@ final class PollKlingVideoJob implements ShouldQueue
     {
         $costPerVideo = (float) config('services.kling.cost_per_video', 0.21);
 
+        try {
+            $localPath = VideoDownloader::download($result['video_url']);
+        } catch (\Throwable $e) {
+            Log::error('[PollKlingVideoJob] Video download failed', [
+                'shot_id' => $shot->id,
+                'remote_url' => $result['video_url'],
+                'error' => $e->getMessage(),
+            ]);
+            $shot->update([
+                'video_status' => 'failed',
+                'video_error' => 'Video download failed: ' . $e->getMessage(),
+            ]);
+            return;
+        }
+
         $shot->update([
-            'video_url' => $result['video_url'],
+            'video_url' => $localPath,
             'video_status' => 'done',
             'video_cost_usd' => $costPerVideo,
         ]);

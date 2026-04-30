@@ -6,7 +6,9 @@ use App\Jobs\PollKlingVideoJob;
 use App\Models\BuildingCase;
 use App\Models\Shot;
 use App\Services\Contracts\VideoGeneratorContract;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     config(['services.kling.cost_per_video' => 0.21]);
@@ -24,6 +26,11 @@ beforeEach(function () {
 });
 
 it('updates shot to done when task succeeds', function () {
+    Storage::fake('public');
+    Http::fake([
+        'https://kling.ai/video/result.mp4' => Http::response('fake-video-content', 200),
+    ]);
+
     $mock = Mockery::mock(VideoGeneratorContract::class);
     $mock->shouldReceive('queryTaskStatus')
         ->with('task_123')
@@ -39,12 +46,42 @@ it('updates shot to done when task succeeds', function () {
 
     $this->shot->refresh();
     expect($this->shot->video_status)->toBe('done');
-    expect($this->shot->video_url)->toBe('https://kling.ai/video/result.mp4');
+    expect($this->shot->video_url)->toStartWith('/storage/videos/');
+    expect($this->shot->video_url)->toEndWith('.mp4');
     expect((float) $this->shot->video_cost_usd)->toBe(0.21);
+
+    // 確認檔案已存入 storage
+    $storagePath = str_replace('/storage/', '', $this->shot->video_url);
+    Storage::disk('public')->assertExists($storagePath);
 
     // 確認 case 費用有增加
     $this->case->refresh();
     expect((float) $this->case->cost_usd)->toBe(0.21);
+});
+
+it('marks as failed when video download fails', function () {
+    Http::fake([
+        'https://kling.ai/video/result.mp4' => Http::response('Not Found', 404),
+    ]);
+
+    $mock = Mockery::mock(VideoGeneratorContract::class);
+    $mock->shouldReceive('queryTaskStatus')
+        ->with('task_123')
+        ->andReturn([
+            'status' => 'succeed',
+            'video_url' => 'https://kling.ai/video/result.mp4',
+            'error' => null,
+        ]);
+
+    (new PollKlingVideoJob($this->shot->id, 'task_123'))->handle($mock);
+
+    $this->shot->refresh();
+    expect($this->shot->video_status)->toBe('failed');
+    expect($this->shot->video_error)->toContain('Video download failed');
+
+    // 確認下載失敗不扣費
+    $this->case->refresh();
+    expect((float) $this->case->cost_usd)->toBe(0.0);
 });
 
 it('re-dispatches when task is still processing', function () {

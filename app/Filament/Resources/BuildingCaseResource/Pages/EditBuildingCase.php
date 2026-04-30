@@ -220,7 +220,7 @@ class EditBuildingCase extends EditRecord
 
                 // remote_url 24 小時內有效，過期用本地圖
                 $remoteStillValid = $approvedCharacter?->remote_url
-                    && $approvedCharacter->updated_at?->diffInHours(now()) < 24;
+                    && $approvedCharacter->updated_at?->gt(now()->subHours(24));
                 $referenceUrl = $remoteStillValid
                     ? $approvedCharacter->remote_url
                     : ($approvedCharacter?->image_url ?? null);
