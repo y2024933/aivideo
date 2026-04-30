@@ -42,14 +42,20 @@ export const BuildingVideo = ({
         </Sequence>
       ))}
 
-      {/* Per-shot 配音音軌 */}
-      {shotTimings.map(({ shot, from, durationFrames }, i) =>
-        shot.voiceoverUrl ? (
-          <Sequence key={`vo-${i}`} from={from} durationInFrames={durationFrames}>
-            <Audio src={shot.voiceoverUrl} volume={1} />
-          </Sequence>
-        ) : null
-      )}
+      {/* Per-shot 配音音軌（不重疊，避免配音互蓋） */}
+      {(() => {
+        let audioOffset = 0;
+        return shots.map((shot, i) => {
+          const durationFrames = Math.round(shot.durationSec * fps);
+          const from = audioOffset;
+          audioOffset += durationFrames;
+          return shot.voiceoverUrl ? (
+            <Sequence key={`vo-${i}`} from={from} durationInFrames={durationFrames}>
+              <Audio src={shot.voiceoverUrl} volume={1} />
+            </Sequence>
+          ) : null;
+        });
+      })()}
 
       {/* 浮水印（全程顯示） */}
       {watermark?.text && <Watermark text={watermark.text} />}
