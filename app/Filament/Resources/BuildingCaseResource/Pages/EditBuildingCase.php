@@ -55,7 +55,7 @@ class EditBuildingCase extends EditRecord
             ->label('生成角色預覽')
             ->icon('heroicon-o-sparkles')
             ->color('primary')
-            ->visible(fn () => in_array($this->record->status, [CaseStatus::Draft, CaseStatus::CharacterFailed]))
+            ->visible(fn () => in_array($this->record->status, [CaseStatus::Draft, CaseStatus::CharacterFailed, CaseStatus::CharacterGenerating]))
             ->form([
                 Forms\Components\TextInput::make('count')
                     ->label('生成數量')
