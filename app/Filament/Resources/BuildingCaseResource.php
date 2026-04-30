@@ -58,7 +58,7 @@ class BuildingCaseResource extends Resource
                     Forms\Components\Textarea::make('taboos')->label('禁忌')->rows(2),
                 ])->columns(2),
 
-                // 狀態資訊（僅編輯時顯示）
+                // 狀態 + 操作區（僅編輯時顯示）
                 Forms\Components\Section::make('目前狀態')
                     ->schema([
                         Forms\Components\Placeholder::make('current_status')
@@ -68,17 +68,17 @@ class BuildingCaseResource extends Resource
                             ->label('累計費用')
                             ->content(fn ($record) => $record ? '$' . number_format((float) $record->cost_usd, 2) . ' USD' : '$0.00'),
                         Forms\Components\Placeholder::make('hint')
-                            ->label('操作提示')
+                            ->label('下一步')
                             ->content(fn ($record) => match ($record?->status) {
-                                null, \App\Enums\CaseStatus::Draft => '請先儲存建案資料，再點上方「生成角色預覽」',
+                                null, \App\Enums\CaseStatus::Draft => '儲存後，點下方「生成角色預覽」',
                                 \App\Enums\CaseStatus::CharacterGenerating => '角色生成中，請稍後刷新頁面...',
-                                \App\Enums\CaseStatus::CharacterPendingReview => '請點上方「核准角色」選擇一張',
-                                \App\Enums\CaseStatus::CharacterApproved => '請點上方「生成場景圖」',
+                                \App\Enums\CaseStatus::CharacterPendingReview => '點下方「核准角色」選擇一張',
+                                \App\Enums\CaseStatus::CharacterApproved => '點下方「生成場景圖」',
                                 \App\Enums\CaseStatus::ImagesGenerating => '場景圖生成中...',
-                                \App\Enums\CaseStatus::ImagesPendingReview => '請點上方「核准場景圖，開始動畫」',
+                                \App\Enums\CaseStatus::ImagesPendingReview => '點下方「核准場景圖，開始動畫」',
                                 \App\Enums\CaseStatus::ProducingFinal => '動畫生成中，請稍後刷新...',
                                 \App\Enums\CaseStatus::Completed => '影片製作完成！',
-                                default => '請依上方按鈕操作',
+                                default => '請依下方按鈕操作',
                             }),
                     ])
                     ->columns(3)

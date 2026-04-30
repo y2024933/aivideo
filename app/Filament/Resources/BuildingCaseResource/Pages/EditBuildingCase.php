@@ -36,13 +36,21 @@ class EditBuildingCase extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\DeleteAction::make(),
+        ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getSaveFormAction(),
             $this->generateCharactersAction(),
             $this->approveCharacterAction(),
             $this->generateScenesAction(),
             $this->approveImagesAction(),
             $this->generateVoiceoverAction(),
             $this->renderVideoAction(),
-            Actions\DeleteAction::make(),
+            $this->getCancelFormAction(),
         ];
     }
 
