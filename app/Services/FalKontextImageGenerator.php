@@ -63,9 +63,19 @@ final class FalKontextImageGenerator implements ImageGeneratorContract
             ]);
         } else {
             // Flux Kontext 帶參考圖
+            // 如果是本地路徑，轉 base64 data URI
+            $imageRef = $referenceImageUrl;
+            if (str_starts_with($referenceImageUrl, '/storage/')) {
+                $localPath = storage_path('app/public/' . str_replace('/storage/', '', $referenceImageUrl));
+                if (file_exists($localPath)) {
+                    $mime = mime_content_type($localPath) ?: 'image/jpeg';
+                    $imageRef = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($localPath));
+                }
+            }
+
             $result = $this->syncRequest($model, [
                 'prompt' => $prompt,
-                'image_url' => $referenceImageUrl,
+                'image_url' => $imageRef,
                 'image_size' => 'portrait_16_9',
                 'num_images' => 1,
             ]);

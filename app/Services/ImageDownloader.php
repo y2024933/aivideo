@@ -26,7 +26,7 @@ final class ImageDownloader
 
         Storage::makeDirectory("public/{$directory}");
         Storage::put("public/{$directory}/{$filename}", $response->body());
-        chmod(storage_path("app/public/{$directory}/{$filename}"), 0644);
+        @chmod(storage_path("app/public/{$directory}/{$filename}"), 0644);
 
         return "/storage/{$directory}/{$filename}";
     }
