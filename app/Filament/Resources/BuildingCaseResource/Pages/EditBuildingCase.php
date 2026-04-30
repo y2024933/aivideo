@@ -385,37 +385,50 @@ class EditBuildingCase extends EditRecord
             ->action(function (array $data) {
                 $case = $this->record;
                 $shots = $case->shots()->orderBy('shot_order')->get();
-                $fullText = $shots->pluck('voiceover_text')->filter()->implode("\n");
+                $voiceableShotCount = $shots->filter(fn ($s) => filled($s->voiceover_text))->count();
 
-                if (blank($fullText)) {
+                if ($voiceableShotCount === 0) {
                     Notification::make()->title('此建案無配音稿文字')->danger()->send();
                     return;
                 }
 
                 $tts = app(TtsContract::class);
+                $voiceName = $data['voice_name'];
+                $doneCount = 0;
+                $failCount = 0;
 
-                try {
-                    $result = $tts->synthesize($fullText, $data['voice_name']);
-                } catch (\Throwable $e) {
-                    Log::error('[EditBuildingCase::generateVoiceover] 配音生成失敗', ['exception' => $e]);
-                    Notification::make()->title('配音生成失敗')->danger()->send();
-                    return;
+                foreach ($shots as $shot) {
+                    if (blank($shot->voiceover_text)) {
+                        continue;
+                    }
+
+                    try {
+                        $result = $tts->synthesize($shot->voiceover_text, $voiceName);
+                        $shot->update([
+                            'voiceover_url' => $result['audio_url'],
+                            'voiceover_status' => 'done',
+                            'voiceover_voice_id' => $voiceName,
+                        ]);
+                        $doneCount++;
+                    } catch (\Throwable $e) {
+                        Log::error('[EditBuildingCase::generateVoiceover] 配音生成失敗', [
+                            'shot_id' => $shot->shot_id,
+                            'exception' => $e,
+                        ]);
+                        $shot->update(['voiceover_status' => 'failed']);
+                        $failCount++;
+                    }
                 }
-
-                $case->voiceovers()->create([
-                    'text' => $fullText,
-                    'voice_id' => $data['voice_name'],
-                    'audio_url' => $result['audio_url'],
-                    'duration_seconds' => $result['duration_seconds'],
-                    'status' => 'done',
-                ]);
 
                 // 配音重新生成後，清掉舊的成品影片讓使用者可以重新渲染
                 if ($case->final_video_url) {
                     $case->update(['final_video_url' => null, 'render_id' => null]);
                 }
 
-                Notification::make()->title('配音生成完成')->success()->send();
+                $message = $failCount > 0
+                    ? "完成 {$doneCount} 段，失敗 {$failCount} 段"
+                    : "全部 {$doneCount} 段配音生成完成";
+                Notification::make()->title($message)->{$failCount > 0 ? 'warning' : 'success'}()->send();
                 $this->refreshFormData(['status']);
             });
     }
@@ -430,7 +443,7 @@ class EditBuildingCase extends EditRecord
             ->icon('heroicon-o-film')
             ->color('warning')
             ->visible(fn () => $this->record->shots()->where('video_status', '!=', 'done')->count() === 0
-                && $this->record->voiceover?->audio_url
+                && $this->record->shots()->where('voiceover_status', 'done')->count() > 0
                 && ! $this->record->final_video_url
                 && ! $this->record->render_id)
             ->requiresConfirmation()

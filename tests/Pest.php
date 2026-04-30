@@ -18,6 +18,7 @@ uses(
 
 uses(
     Tests\TestCase::class,
+    Illuminate\Foundation\Testing\RefreshDatabase::class,
 )->in('Unit/Services');
 
 // 測試環境強制用 stub，不打真實 API

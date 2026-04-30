@@ -97,7 +97,7 @@ final class RemotionVideoEditor implements VideoEditorContract
      */
     private function buildInputProps(BuildingCase $case): array
     {
-        $case->load(['shots', 'voiceover']);
+        $case->load(['shots']);
 
         $shots = $case->shots->map(fn ($shot) => [
             'videoUrl' => $shot->video_url,
@@ -105,9 +105,10 @@ final class RemotionVideoEditor implements VideoEditorContract
             'clipDurationSec' => KlingVideoGenerator::normalizeDuration((int) ($shot->duration_seconds ?: 5)),
             'subtitle' => $shot->subtitle ?? $shot->voiceover_text ?? '',
             'isPublicFacility' => false,
+            'voiceoverUrl' => $shot->voiceover_url ? url($shot->voiceover_url) : null,
         ])->toArray();
 
-        $props = [
+        return [
             'fps' => 30,
             'shots' => $shots,
             'watermark' => [
@@ -119,15 +120,6 @@ final class RemotionVideoEditor implements VideoEditorContract
                 'slogan' => '',
             ],
         ];
-
-        // 配音音軌
-        if ($case->voiceover?->audio_url) {
-            $props['voiceover'] = [
-                'audioUrl' => $case->voiceover->audio_url,
-            ];
-        }
-
-        return $props;
     }
 
     /**

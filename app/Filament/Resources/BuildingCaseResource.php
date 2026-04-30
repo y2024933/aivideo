@@ -102,19 +102,15 @@ class BuildingCaseResource extends Resource
                         Forms\Components\Placeholder::make('voiceover_preview')
                             ->label('')
                             ->content(function ($record) {
-                                $v = $record?->voiceover;
-                                if (! $v?->audio_url) {
-                                    return '尚未生成配音。點下方「生成配音」按鈕。';
+                                if (! $record) {
+                                    return '尚未生成配音。';
                                 }
-                                $url = url($v->audio_url);
-                                $voice = $v->voice_id ?? '未知';
-                                $duration = $v->duration_seconds ?? '?';
-                                return new \Illuminate\Support\HtmlString(
-                                    "<div>"
-                                    . "<audio controls style='width:100%'><source src='{$url}' type='audio/mpeg'></audio>"
-                                    . "<p style='margin-top:8px;font-size:13px;color:#666'>聲音：{$voice} ／ 時長：{$duration}s</p>"
-                                    . "</div>"
-                                );
+                                $total = $record->shots()->whereNotNull('voiceover_text')->where('voiceover_text', '!=', '')->count();
+                                $done = $record->shots()->where('voiceover_status', 'done')->count();
+
+                                return $total === 0
+                                    ? '此建案無配音稿文字。'
+                                    : "已生成 {$done}/{$total} 段配音";
                             }),
                     ])
                     ->hiddenOn('create'),

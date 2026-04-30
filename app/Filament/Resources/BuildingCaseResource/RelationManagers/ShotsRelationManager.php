@@ -6,8 +6,10 @@ namespace App\Filament\Resources\BuildingCaseResource\RelationManagers;
 
 use App\Jobs\PollKlingVideoJob;
 use App\Services\Contracts\ImageGeneratorContract;
+use App\Services\Contracts\TtsContract;
 use App\Services\Contracts\VideoGeneratorContract;
 use App\Services\ImageDownloader;
+use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -72,6 +74,29 @@ class ShotsRelationManager extends RelationManager
                             ->modalCancelActionLabel('關閉')
                             ->visible(fn ($record) => (bool) $record->video_url)
                     ),
+                Tables\Columns\TextColumn::make('voiceover_status')->label('配音狀態')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'gray',
+                        'processing' => 'info',
+                        'done' => 'success',
+                        'failed' => 'danger',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('voiceover_url')
+                    ->label('配音')
+                    ->formatStateUsing(fn ($state) => $state ? '▶ 播放' : '')
+                    ->color('primary')
+                    ->action(
+                        Tables\Actions\Action::make('play_voiceover')
+                            ->modalContent(fn ($record) => new \Illuminate\Support\HtmlString(
+                                '<div style="text-align:center"><audio src="' . url($record->voiceover_url) . '" controls autoplay style="width:100%"></audio></div>'
+                            ))
+                            ->modalHeading(fn ($record) => $record->shot_id . ' 配音預覽')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('關閉')
+                            ->visible(fn ($record) => (bool) $record->voiceover_url)
+                    ),
                 Tables\Columns\TextColumn::make('subtitle')->label('字幕')->limit(30),
             ])
             ->defaultSort('shot_order')
@@ -79,6 +104,7 @@ class ShotsRelationManager extends RelationManager
             ->actions([
                 $this->regenerateSceneAction(),
                 $this->regenerateVideoAction(),
+                $this->generateVoiceoverAction(),
             ]);
     }
 
@@ -231,6 +257,58 @@ class ShotsRelationManager extends RelationManager
                     ]);
 
                     Notification::make()->title('動畫重新生成失敗')->danger()->send();
+                }
+            });
+    }
+
+    /**
+     * 生成/重跑單段配音
+     */
+    private function generateVoiceoverAction(): Tables\Actions\Action
+    {
+        return Tables\Actions\Action::make('generate_voiceover')
+            ->label(fn ($record) => $record->voiceover_status === 'pending' ? '生成配音' : '重跑配音')
+            ->icon('heroicon-o-microphone')
+            ->color(fn ($record) => $record->voiceover_status === 'pending' ? 'primary' : 'warning')
+            ->visible(fn ($record) => filled($record->voiceover_text))
+            ->form([
+                Forms\Components\Select::make('voice_name')
+                    ->label('選擇聲音')
+                    ->options([
+                        'zh-TW-HsiaoChenNeural' => '曉臻（女，溫暖）',
+                        'zh-TW-HsiaoYuNeural' => '曉雨（女，清亮）',
+                        'zh-TW-YunJheNeural' => '雲哲（男）',
+                    ])
+                    ->default(fn ($record) => $record->voiceover_voice_id ?? 'zh-TW-HsiaoChenNeural')
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
+                $tts = app(TtsContract::class);
+
+                try {
+                    $result = $tts->synthesize($record->voiceover_text, $data['voice_name']);
+
+                    $record->update([
+                        'voiceover_url' => $result['audio_url'],
+                        'voiceover_status' => 'done',
+                        'voiceover_voice_id' => $data['voice_name'],
+                    ]);
+
+                    // 配音變更後清掉成品影片
+                    $case = $record->buildingCase;
+                    if ($case?->final_video_url) {
+                        $case->update(['final_video_url' => null, 'render_id' => null]);
+                    }
+
+                    Notification::make()->title("鏡頭 {$record->shot_id} 配音生成完成")->success()->send();
+                } catch (\Throwable $e) {
+                    Log::error('[ShotsRelationManager::generateVoiceover] 單段配音生成失敗', [
+                        'shot_id' => $record->shot_id,
+                        'exception' => $e,
+                    ]);
+
+                    $record->update(['voiceover_status' => 'failed']);
+                    Notification::make()->title('配音生成失敗')->danger()->send();
                 }
             });
     }

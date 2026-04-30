@@ -49,12 +49,8 @@ it('submitRender returns render_id from Lambda response', function () {
         'video_status' => 'done',
         'duration_seconds' => 5,
         'subtitle' => '測試字幕',
-    ]);
-    $case->voiceovers()->create([
-        'text' => '測試',
-        'voice_id' => 'zh-TW-HsiaoChenNeural',
-        'audio_url' => 'https://example.com/vo.mp3',
-        'status' => 'done',
+        'voiceover_url' => '/storage/voiceover/test.mp3',
+        'voiceover_status' => 'done',
     ]);
 
     $result = $editor->submitRender($case);
