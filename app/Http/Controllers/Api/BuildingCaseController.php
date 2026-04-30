@@ -205,7 +205,7 @@ final class BuildingCaseController
         return response()->json($buildingCase->load('shots'));
     }
 
-    public function generateVoiceover(BuildingCase $buildingCase, TtsContract $tts): JsonResponse
+    public function generateVoiceover(BuildingCase $buildingCase, Request $request, TtsContract $tts): JsonResponse
     {
         $shots = $buildingCase->shots()->orderBy('shot_order')->get();
         $fullText = $shots->pluck('voiceover_text')->filter()->implode("\n");
@@ -214,7 +214,8 @@ final class BuildingCaseController
             return response()->json(['error' => '此建案無配音稿文字'], 422);
         }
 
-        $voiceName = 'zh-TW-HsiaoChenNeural';
+        $allowed = ['zh-TW-HsiaoChenNeural', 'zh-TW-HsiaoYuNeural', 'zh-TW-YunJheNeural'];
+        $voiceName = in_array($request->input('voice_name'), $allowed) ? $request->input('voice_name') : 'zh-TW-HsiaoChenNeural';
 
         try {
             $result = $tts->synthesize($fullText, $voiceName);

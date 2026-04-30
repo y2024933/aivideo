@@ -30,6 +30,13 @@ const hasVoiceover = computed(() => !!store.voiceover?.audio_url)
 const finalVideoUrl = computed(() => store.current?.final_video_url)
 
 // 輪詢動畫進度
+const voices = [
+    { id: 'zh-TW-HsiaoChenNeural', label: '曉臻（女，溫暖）' },
+    { id: 'zh-TW-HsiaoYuNeural', label: '曉雨（女，清亮）' },
+    { id: 'zh-TW-YunJheNeural', label: '雲哲（男）' },
+]
+const selectedVoice = ref('zh-TW-HsiaoChenNeural')
+
 let pollTimer = null
 function startPolling() {
     pollTimer = setInterval(() => store.refresh(), 5000)
@@ -38,14 +45,15 @@ function stopPolling() {
     if (pollTimer) clearInterval(pollTimer)
 }
 
-onMounted(() => {
-    store.load(route.params.id)
+onMounted(async () => {
+    await store.load(route.params.id)
+    if (store.voiceover?.voice_id) selectedVoice.value = store.voiceover.voice_id
     startPolling()
 })
 onUnmounted(stopPolling)
 
 async function genVoiceover() {
-    await store.generateVoiceover()
+    await store.generateVoiceover(selectedVoice.value)
 }
 
 async function render() {
@@ -128,8 +136,22 @@ function statusIconClass(status) {
                     <p class="text-sm text-gray-500">
                         時長：{{ store.voiceover.duration_seconds }}s / 聲音：{{ store.voiceover.voice_id }}
                     </p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <select v-model="selectedVoice" class="text-sm border-gray-300 rounded-md">
+                            <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.label }}</option>
+                        </select>
+                        <ActionButton variant="secondary" :loading="store.loading" @click="genVoiceover">
+                            重新生成
+                        </ActionButton>
+                    </div>
                 </div>
                 <div v-else>
+                    <div class="flex items-center gap-3 mb-3">
+                        <label class="text-sm text-gray-600">選擇聲音：</label>
+                        <select v-model="selectedVoice" class="text-sm border-gray-300 rounded-md">
+                            <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.label }}</option>
+                        </select>
+                    </div>
                     <ActionButton :loading="store.loading" @click="genVoiceover" :disabled="!videosReady">
                         生成配音
                     </ActionButton>

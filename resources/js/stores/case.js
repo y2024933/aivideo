@@ -91,10 +91,10 @@ export const useCaseStore = defineStore('case', () => {
         }
     }
 
-    async function generateVoiceover() {
+    async function generateVoiceover(voiceName) {
         loading.value = true
         try {
-            const { data } = await api.generateVoiceover(current.value.id)
+            const { data } = await api.generateVoiceover(current.value.id, voiceName)
             current.value = { ...current.value, voiceover: data }
         } catch (e) {
             error.value = e.response?.data?.error ?? '配音生成失敗'

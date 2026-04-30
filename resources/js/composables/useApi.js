@@ -13,7 +13,7 @@ export const useApi = () => ({
     approveCharacter: (id, optionId) => api.post(`/cases/${id}/approve-character`, { character_option_id: optionId }),
     generateScenes: (id) => api.post(`/cases/${id}/generate-scenes`),
     approveImages: (id) => api.post(`/cases/${id}/approve-images`),
-    generateVoiceover: (id) => api.post(`/cases/${id}/generate-voiceover`),
+    generateVoiceover: (id, voiceName) => api.post(`/cases/${id}/generate-voiceover`, { voice_name: voiceName }),
     renderVideo: (id) => api.post(`/cases/${id}/render-video`),
     regenerateScene: (caseId, shotId) => api.post(`/cases/${caseId}/regenerate-scene/${shotId}`),
     regenerateVideo: (caseId, shotId) => api.post(`/cases/${caseId}/regenerate-video/${shotId}`),
