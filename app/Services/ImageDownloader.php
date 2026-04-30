@@ -25,7 +25,7 @@ final class ImageDownloader
         $filename = Str::uuid()->toString() . '.' . $extension;
 
         Storage::makeDirectory("public/{$directory}");
-        Storage::put("public/{$directory}/{$filename}", $response->body());
+        Storage::put("public/{$directory}/{$filename}", $response->body(), ['visibility' => 'public']);
 
         return "/storage/{$directory}/{$filename}";
     }
