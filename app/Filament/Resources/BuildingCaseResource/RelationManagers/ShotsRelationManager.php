@@ -62,7 +62,6 @@ class ShotsRelationManager extends RelationManager
             ])
             ->defaultSort('shot_order')
             ->actions([
-                Tables\Actions\ViewAction::make(),
                 $this->regenerateSceneAction(),
                 $this->regenerateVideoAction(),
             ]);
