@@ -58,6 +58,20 @@ class ShotsRelationManager extends RelationManager
                         'failed' => 'danger',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('video_url')
+                    ->label('影片')
+                    ->formatStateUsing(fn ($state) => $state ? '▶ 播放' : '')
+                    ->color('primary')
+                    ->action(
+                        Tables\Actions\Action::make('play_video')
+                            ->modalContent(fn ($record) => new \Illuminate\Support\HtmlString(
+                                '<div style="text-align:center"><video src="' . url($record->video_url) . '" controls autoplay style="max-width:100%;max-height:80vh;border-radius:8px;"></video></div>'
+                            ))
+                            ->modalHeading(fn ($record) => $record->shot_id . ' 影片預覽')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('關閉')
+                            ->visible(fn ($record) => (bool) $record->video_url)
+                    ),
                 Tables\Columns\TextColumn::make('subtitle')->label('字幕')->limit(30),
             ])
             ->defaultSort('shot_order')
