@@ -443,18 +443,7 @@ class EditBuildingCase extends EditRecord
             ->icon('heroicon-o-film')
             ->color('warning')
             ->visible(function () {
-                $shotsWithText = $this->record->shots()
-                    ->whereNotNull('voiceover_text')
-                    ->where('voiceover_text', '!=', '')
-                    ->count();
-                $voiceoversDone = $this->record->shots()
-                    ->where('voiceover_status', 'done')
-                    ->count();
-
-                return $this->record->shots()->where('video_status', '!=', 'done')->count() === 0
-                    && $shotsWithText > 0
-                    && $voiceoversDone >= $shotsWithText
-                    && ! $this->record->final_video_url
+                return $this->record->shots()->where('video_status', 'done')->exists()
                     && ! $this->record->render_id;
             })
             ->requiresConfirmation()

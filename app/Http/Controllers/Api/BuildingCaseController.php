@@ -243,15 +243,14 @@ final class BuildingCaseController
 
     public function renderFinalVideo(BuildingCase $buildingCase, VideoEditorContract $videoEditor): JsonResponse
     {
-        // 檢查所有 shots 影片已完成
-        $pendingShots = $buildingCase->shots()->where('video_status', '!=', 'done')->count();
-        if ($pendingShots > 0) {
-            return response()->json(['error' => '尚有未完成的影片片段'], 422);
+        // 檢查至少有 1 個 done 的 shot
+        if (! $buildingCase->shots()->where('video_status', 'done')->exists()) {
+            return response()->json(['error' => '尚無任何已完成的影片片段'], 422);
         }
 
-        // 檢查配音已存在
-        if (! $buildingCase->voiceover?->audio_url) {
-            return response()->json(['error' => '尚未產生配音'], 422);
+        // 防止重複提交渲染
+        if ($buildingCase->render_id) {
+            return response()->json(['error' => '已有渲染任務進行中'], 422);
         }
 
         try {

@@ -47,31 +47,27 @@ it('submits render and dispatches poll job when all shots done and voiceover exi
     Queue::assertPushed(PollRemotionRenderJob::class, 1);
 });
 
-it('returns 422 when shots are not all done', function () {
+it('returns 422 when no shots are done', function () {
     $case = BuildingCase::create(['name' => '未完成測試']);
 
     $case->shots()->createMany([
-        ['shot_id' => 'S01', 'shot_order' => 1, 'flux_prompt' => 'p1', 'video_status' => 'done', 'video_url' => 'https://example.com/1.mp4'],
-        ['shot_id' => 'S02', 'shot_order' => 2, 'flux_prompt' => 'p2', 'video_status' => 'processing'],
-    ]);
-
-    $case->voiceovers()->create([
-        'text' => '測試',
-        'voice_id' => 'zh-TW-HsiaoChenNeural',
-        'audio_url' => 'https://example.com/vo.mp3',
-        'status' => 'done',
+        ['shot_id' => 'S01', 'shot_order' => 1, 'flux_prompt' => 'p1', 'video_status' => 'processing'],
+        ['shot_id' => 'S02', 'shot_order' => 2, 'flux_prompt' => 'p2', 'video_status' => 'pending'],
     ]);
 
     $response = $this->postJson("/api/cases/{$case->id}/render-video");
 
     $response->assertStatus(422);
-    $response->assertJsonPath('error', '尚有未完成的影片片段');
+    $response->assertJsonPath('error', '尚無任何已完成的影片片段');
 
     Queue::assertNotPushed(PollRemotionRenderJob::class);
 });
 
-it('returns 422 when voiceover is missing', function () {
-    $case = BuildingCase::create(['name' => '無配音測試']);
+it('returns 422 when render_id already exists', function () {
+    $case = BuildingCase::create([
+        'name' => '重複渲染測試',
+        'render_id' => 'existing-render-id',
+    ]);
 
     $case->shots()->create([
         'shot_id' => 'S01',
@@ -84,7 +80,9 @@ it('returns 422 when voiceover is missing', function () {
     $response = $this->postJson("/api/cases/{$case->id}/render-video");
 
     $response->assertStatus(422);
-    $response->assertJsonPath('error', '尚未產生配音');
+    $response->assertJsonPath('error', '已有渲染任務進行中');
+
+    Queue::assertNotPushed(PollRemotionRenderJob::class);
 });
 
 it('returns 500 when video editor service fails', function () {

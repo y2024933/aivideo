@@ -99,14 +99,18 @@ final class RemotionVideoEditor implements VideoEditorContract
     {
         $case->load(['shots']);
 
-        $shots = $case->shots->map(fn ($shot) => [
-            'videoUrl' => $shot->video_url,
-            'durationSec' => (float) $shot->duration_seconds ?: 5,
-            'clipDurationSec' => KlingVideoGenerator::normalizeDuration((int) ($shot->duration_seconds ?: 5)),
-            'subtitle' => $shot->subtitle ?? $shot->voiceover_text ?? '',
-            'isPublicFacility' => false,
-            'voiceoverUrl' => $shot->voiceover_url ? url($shot->voiceover_url) : null,
-        ])->toArray();
+        $shots = $case->shots
+            ->filter(fn ($shot) => $shot->video_status === 'done')
+            ->sortBy('shot_order')
+            ->values()
+            ->map(fn ($shot) => [
+                'videoUrl' => $shot->video_url,
+                'durationSec' => (float) $shot->duration_seconds ?: 5,
+                'clipDurationSec' => KlingVideoGenerator::normalizeDuration((int) ($shot->duration_seconds ?: 5)),
+                'subtitle' => $shot->subtitle ?? $shot->voiceover_text ?? '',
+                'isPublicFacility' => false,
+                'voiceoverUrl' => $shot->voiceover_url ? url($shot->voiceover_url) : null,
+            ])->toArray();
 
         return [
             'fps' => 30,

@@ -37,6 +37,7 @@ final class PollRemotionRenderJob implements ShouldQueue
         // 超過 20 次輪詢視為逾時（20 x 15s = 5 分鐘）
         if ($this->pollCount >= 20) {
             Log::error('[PollRemotionRenderJob::handle] Polling timeout', ['case_id' => $this->caseId]);
+            $case->update(['render_id' => null]);
             $case->transitionTo(CaseStatus::ProducingFinal, 'system', '影片渲染逾時');
             return;
         }
@@ -68,6 +69,7 @@ final class PollRemotionRenderJob implements ShouldQueue
             'case_id' => $case->id,
             'error' => $result['error'],
         ]);
+        $case->update(['render_id' => null]);
         $case->transitionTo(CaseStatus::ProducingFinal, 'system', $result['error']);
     }
 }
