@@ -3,7 +3,7 @@ import { useAuthStore } from './stores/auth'
 
 const routes = [
     { path: '/login', name: 'login', component: () => import('./pages/Login.vue'), meta: { guest: true } },
-    { path: '/guide', name: 'guide', component: () => import('./pages/Guide.vue'), meta: { guest: true } },
+    { path: '/guide', name: 'guide', component: () => import('./pages/Guide.vue'), meta: { public: true } },
     { path: '/', name: 'home', component: () => import('./pages/CaseList.vue') },
     { path: '/cases/new', name: 'case.create', component: () => import('./pages/CaseCreate.vue') },
     { path: '/cases/:id', name: 'case.overview', component: () => import('./pages/CaseOverview.vue') },
@@ -20,6 +20,8 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
     const auth = useAuthStore()
+
+    if (to.meta.public) return // 公開頁面，不需認證
 
     if (!auth.user && !to.meta.guest) {
         try { await auth.fetchUser() } catch {}
