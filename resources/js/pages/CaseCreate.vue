@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCaseStore } from '../stores/case'
+import { parseScriptMarkdown } from '../composables/useMarkdownParser'
 import ActionButton from '../components/ActionButton.vue'
 import InputLabel from '../components/InputLabel.vue'
 import TextInput from '../components/TextInput.vue'
@@ -76,6 +77,37 @@ async function submit() {
     }
 }
 
+/* 匯入 Markdown 腳本 */
+const importExpanded = ref(false)
+const importText = ref('')
+const importError = ref('')
+
+function importMarkdown() {
+    importError.value = ''
+    if (!importText.value.trim()) {
+        importError.value = '請貼上 Markdown 腳本內容'
+        return
+    }
+    try {
+        const result = parseScriptMarkdown(importText.value)
+        if (!result.shots.length) {
+            importError.value = '未偵測到任何鏡頭資料，請確認格式是否正確'
+            return
+        }
+        // 回填 form
+        if (result.name) form.name = result.name
+        if (result.builder_name) form.builder_name = result.builder_name
+        if (result.character_nickname) form.character_nickname = result.character_nickname
+        if (result.character_dna) form.character_dna = result.character_dna
+        // 回填 shots
+        shots.value = result.shots
+        activeShot.value = 0
+        importExpanded.value = false
+    } catch (e) {
+        importError.value = `解析失敗：${e.message}`
+    }
+}
+
 /* 統一 input 樣式（給原生 input / textarea / select 使用） */
 const inputClass = 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full text-sm'
 </script>
@@ -89,6 +121,37 @@ const inputClass = 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-50
 
         <div class="max-w-3xl mx-auto">
             <form @submit.prevent="submit" class="space-y-8">
+                <!-- 匯入 Markdown 腳本 -->
+                <section class="rounded-lg border border-blue-200 bg-blue-50">
+                    <button
+                        type="button"
+                        class="w-full flex items-center justify-between px-6 py-4 text-left"
+                        @click="importExpanded = !importExpanded"
+                    >
+                        <span class="font-semibold text-blue-700">從 Markdown 腳本匯入</span>
+                        <svg :class="['w-5 h-5 text-blue-500 transition-transform', importExpanded ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <div v-show="importExpanded" class="px-6 pb-5 space-y-3">
+                        <p class="text-xs text-blue-600">貼上完整的 Markdown 腳本（含角色 DNA、鏡頭時長表、Flux/Kling Prompt、配音稿、字幕），解析後會覆蓋目前所有欄位。</p>
+                        <textarea
+                            v-model="importText"
+                            rows="10"
+                            class="w-full font-mono text-xs border-blue-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
+                            placeholder="# 建案名稱｜60 秒影片腳本 v2&#10;&#10;> **建案**：XXX ｜ **建商**：YYY&#10;> **主角**：角色暱稱&#10;&#10;## 角色 DNA&#10;```&#10;...&#10;```&#10;..."
+                        />
+                        <div class="flex items-center gap-3">
+                            <button
+                                type="button"
+                                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition"
+                                @click="importMarkdown"
+                            >
+                                解析並填入
+                            </button>
+                            <p v-if="importError" class="text-red-600 text-sm">{{ importError }}</p>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 建案基本資料 -->
                 <section class="bg-white rounded-lg border p-6 space-y-4">
                     <h3 class="font-semibold text-gray-800">建案資料</h3>
