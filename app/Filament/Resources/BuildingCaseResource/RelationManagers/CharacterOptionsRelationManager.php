@@ -16,6 +16,9 @@ class CharacterOptionsRelationManager extends RelationManager
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('row_number')
+                    ->label('#')
+                    ->rowIndex(),
                 Tables\Columns\ImageColumn::make('image_url')
                     ->label('角色圖')
                     ->width(120)

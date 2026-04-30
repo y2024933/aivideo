@@ -106,10 +106,19 @@ class EditBuildingCase extends EditRecord
             ->form([
                 Select::make('character_option_id')
                     ->label('選擇角色')
-                    ->options(fn () => $this->record->characterOptions()
-                        ->where('status', 'done')
-                        ->get()
-                        ->mapWithKeys(fn ($opt) => [$opt->id => "角色 #{$opt->id} (cost: \${$opt->cost_usd})"]))
+                    ->options(function () {
+                        $options = $this->record->characterOptions()
+                            ->where('status', 'done')
+                            ->orderBy('created_at')
+                            ->get();
+                        $result = [];
+                        foreach ($options as $i => $opt) {
+                            $num = $i + 1;
+                            $time = $opt->created_at->format('H:i');
+                            $result[$opt->id] = "角色 #{$num}（{$time} 生成）";
+                        }
+                        return $result;
+                    })
                     ->required(),
             ])
             ->action(function (array $data) {
