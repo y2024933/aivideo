@@ -115,19 +115,12 @@ final class RemotionVideoEditor implements VideoEditorContract
             return $this->client;
         }
 
-        $key = config('services.remotion.key');
-        $secret = config('services.remotion.secret');
-
-        // 若有明確設定 credentials，傳入 callable；否則傳 null 讓 SDK 用預設 credential chain
-        $credential = ($key && $secret)
-            ? fn () => new \Aws\Credentials\Credentials($key, $secret)
-            : null;
-
+        // 傳 null 讓 AWS SDK 自動從環境變數讀取 credentials
         return new PHPClient(
             $this->region,
             $this->serveUrl,
             $this->functionName,
-            $credential,
+            null,
         );
     }
 
