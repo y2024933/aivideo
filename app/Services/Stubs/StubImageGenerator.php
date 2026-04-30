@@ -16,7 +16,7 @@ final class StubImageGenerator implements ImageGeneratorContract
         ])->all();
     }
 
-    public function generateSceneImage(string $prompt, string $referenceImageUrl): array
+    public function generateSceneImage(string $prompt, string $referenceImageUrl, ?string $model = null): array
     {
         return [
             'request_id' => 'stub_scene_' . uniqid(),

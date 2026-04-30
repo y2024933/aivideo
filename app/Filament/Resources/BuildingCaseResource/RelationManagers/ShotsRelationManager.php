@@ -68,9 +68,18 @@ class ShotsRelationManager extends RelationManager
             ->label('重跑場景圖')
             ->icon('heroicon-o-arrow-path')
             ->color('warning')
-            ->requiresConfirmation()
-            ->visible(fn ($record) => in_array($record->image_status, ['done', 'failed']))
-            ->action(function ($record) {
+            ->visible(fn ($record) => in_array($record->image_status, ['done', 'failed', 'pending']))
+            ->form([
+                \Filament\Forms\Components\Select::make('model')
+                    ->label('生成模型')
+                    ->options([
+                        'flux_kontext' => 'Flux Kontext（角色一致性高）',
+                        'ideogram' => 'Ideogram（中文文字正確）',
+                    ])
+                    ->default('flux_kontext')
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
                 $case = $this->getOwnerRecord();
                 $approvedCharacter = $case->approvedCharacter;
 
@@ -83,10 +92,17 @@ class ShotsRelationManager extends RelationManager
                 $costPerImage = (float) config('services.fal.cost_per_image');
                 $referenceUrl = $approvedCharacter->remote_url ?? $approvedCharacter->image_url;
 
+                $modelMap = [
+                    'flux_kontext' => \App\Services\FalKontextImageGenerator::MODEL_KONTEXT,
+                    'ideogram' => \App\Services\FalKontextImageGenerator::MODEL_IDEOGRAM,
+                ];
+                $selectedModel = $modelMap[$data['model'] ?? 'flux_kontext'] ?? null;
+
                 try {
                     $result = $imageGenerator->generateSceneImage(
                         $record->flux_prompt,
-                        $referenceUrl
+                        $referenceUrl,
+                        $selectedModel
                     );
 
                     $localUrl = $result['image_url'] ? ImageDownloader::download($result['image_url'], 'scenes') : null;

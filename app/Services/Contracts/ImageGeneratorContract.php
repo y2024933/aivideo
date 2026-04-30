@@ -15,5 +15,5 @@ interface ImageGeneratorContract
     /**
      * 用參考角色圖產生場景圖
      */
-    public function generateSceneImage(string $prompt, string $referenceImageUrl): array;
+    public function generateSceneImage(string $prompt, string $referenceImageUrl, ?string $model = null): array;
 }
