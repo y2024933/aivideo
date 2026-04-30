@@ -10,9 +10,6 @@ use Illuminate\Support\Str;
 
 final class ImageDownloader
 {
-    /**
-     * 下載遠端圖片到本地 storage，回傳本地 URL
-     */
     public static function download(string $remoteUrl, string $directory = 'images'): string
     {
         $response = Http::timeout(30)->get($remoteUrl);
@@ -23,12 +20,12 @@ final class ImageDownloader
 
         $extension = self::guessExtension($response->header('Content-Type', ''), $remoteUrl);
         $filename = Str::uuid()->toString() . '.' . $extension;
+        $path = "{$directory}/{$filename}";
 
-        Storage::makeDirectory("public/{$directory}");
-        Storage::put("public/{$directory}/{$filename}", $response->body());
-        @chmod(storage_path("app/public/{$directory}/{$filename}"), 0644);
+        // 用 public disk（有正確的 visibility 設定）
+        Storage::disk('public')->put($path, $response->body());
 
-        return "/storage/{$directory}/{$filename}";
+        return "/storage/{$path}";
     }
 
     private static function guessExtension(string $contentType, string $url): string
@@ -43,8 +40,7 @@ final class ImageDownloader
             return $map[$contentType];
         }
 
-        $path = parse_url($url, PHP_URL_PATH) ?? '';
-        $ext = pathinfo($path, PATHINFO_EXTENSION);
+        $ext = pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION);
 
         return in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) ? $ext : 'jpg';
     }

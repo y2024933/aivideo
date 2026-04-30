@@ -101,7 +101,7 @@ description: 建案 AI 影片腳本助手 — 對話收集建商資料 + 角色�
 
 ## 階段 5：產出標準格式 MD 檔
 
-依 `~/Desktop/aivideo/09_腳本參考/14_MD_Schema.md` 定義的格式輸出。
+**嚴格依 `~/Desktop/aivideo/09_腳本參考/17_Cowork_輸出模板.md` 定義的 YAML 格式輸出**（這是 authoritative 標準）。`14_MD_Schema.md` 只是 Laravel parser 的開發參考，Cowork 輸出**必遵守 17**。
 
 **必須遵守**：
 - YAML frontmatter 在最上方
@@ -135,8 +135,9 @@ description: 建案 AI 影片腳本助手 — 對話收集建商資料 + 角色�
 
 - `~/Desktop/aivideo/09_腳本參考/02_Reviewers.md` — 4 個 Reviewer 詳細 prompt
 - `~/Desktop/aivideo/09_腳本參考/09_接案SOP_v2.0_踩坑筆記.md` — 8 個踩坑要避開
-- `~/Desktop/aivideo/09_腳本參考/14_MD_Schema.md` — 輸出格式
-- `~/Desktop/aivideo/09_腳本參考/15_松竹敦富_30秒_標準格式.md` — 範例輸出
+- `~/Desktop/aivideo/09_腳本參考/17_Cowork_輸出模板.md` — **AUTHORITATIVE** YAML 輸出格式（Cowork 必遵守）
+- `~/Desktop/aivideo/09_腳本參考/14_MD_Schema.md` — Laravel parser 開發參考（補充用）
+- `~/Desktop/aivideo/09_腳本參考/13_松竹敦富_30秒版.md` — 範例輸出（已遵守 17 格式）
 ```
 
 ---
@@ -163,7 +164,7 @@ description: 建案 AI 影片腳本助手 — 對話收集建商資料 + 角色�
 - 影片長度：30 秒
 - 故事大綱：松松陪主人從捷運出發找新家
 
-請依 ~/Desktop/aivideo/09_腳本參考/14_MD_Schema.md 的格式：
+請嚴格依 ~/Desktop/aivideo/09_腳本參考/17_Cowork_輸出模板.md 的 YAML 格式：
 1. 先產 v1 腳本
 2. 並行跑 4 個 Reviewer（用 Agent 工具）
 3. 整合 review 報告 + 產 v2

@@ -14,8 +14,9 @@ Follow this exact procedure:
 1. **Read this entire file first.** Do not skim.
 2. After reading, **list back to me in 5 bullets** what you understood the project to be. If anything seems contradictory, stop and ask.
 3. Then **read these supporting files** (in this order):
-   - `09_腳本參考/14_MD_Schema.md` — 標準 MD 格式定義（核心）
-   - `09_腳本參考/15_松竹敦富_30秒_標準格式.md` — 範例可匯入 MD
+   - `09_腳本參考/17_Cowork_輸出模板.md` — **AUTHORITATIVE** YAML 輸出格式（Cowork 端必遵守）
+   - `09_腳本參考/14_MD_Schema.md` — Laravel parser 完整 schema 參考（開發用）
+   - `09_腳本參考/13_松竹敦富_30秒版.md` — 範例可匯入 YAML（已遵守 17 格式，bow tie 角色版）
    - `09_腳本參考/02_Reviewers.md` — Reviewer 系統 prompt（**已不在 Laravel 範圍內，但理解這個流程有助於你理解 review.passed 從哪來**）
    - `09_腳本參考/09_接案SOP_v2.0_踩坑筆記.md` — 已知技術坑（必看）
 4. Begin **Phase 1: Architecture Review** (see §13). Do NOT write code yet.
@@ -564,7 +565,7 @@ class StubRemotionRenderService implements RemotionRenderServiceContract {
 - [ ] composer + npm 完成
 - [ ] migrations 跑通
 - [ ] MD 匯入 service 寫好（YAML 解析 + 驗證）
-- [ ] 用 `15_松竹敦富_30秒_標準格式.md` 測試成功匯入
+- [ ] 用 `13_松竹敦富_30秒版.md` 測試成功匯入（YAML 格式遵守 17_Cowork_輸出模板）
 - [ ] Pest 測試覆蓋 import service ≥ 80%
 
 ### Phase 3: AI Service Integration
@@ -665,7 +666,7 @@ class StubRemotionRenderService implements RemotionRenderServiceContract {
 
 **Begin with Phase 1: Architecture Review.**
 
-Read this brief, then `14_MD_Schema.md`, `15_松竹敦富_30秒_標準格式.md`, `02_Reviewers.md`, `09_接案SOP_v2.0_踩坑筆記.md`.
+Read this brief, then `17_Cowork_輸出模板.md`（authoritative format）, `14_MD_Schema.md`, `13_松竹敦富_30秒版.md`（範例可匯入 YAML）, `02_Reviewers.md`, `09_接案SOP_v2.0_踩坑筆記.md`.
 
 Come back with:
 1. 5-bullet 摘要
