@@ -34,7 +34,7 @@ final class KlingVideoGenerator implements VideoGeneratorContract
                 'model_name' => config('services.kling.model', 'kling-v2-5-turbo'),
                 'image' => $imageUrl,
                 'prompt' => $prompt,
-                'duration' => (string) ($durationSeconds ?: config('services.kling.duration', 5)),
+                'duration' => (string) self::normalizeDuration($durationSeconds),
                 'mode' => config('services.kling.mode', 'std'),
             ]);
 
@@ -75,6 +75,12 @@ final class KlingVideoGenerator implements VideoGeneratorContract
             'video_url' => $videoUrl,
             'error' => $data['task_status_msg'] ?? null,
         ];
+    }
+
+    /** V2.5 Turbo 只支援 5 和 10 秒，自動 round */
+    private static function normalizeDuration(int $seconds): int
+    {
+        return $seconds <= 7 ? 5 : 10;
     }
 
     /** 產生 JWT token (HS256) */
