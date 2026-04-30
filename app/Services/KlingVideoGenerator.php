@@ -78,7 +78,7 @@ final class KlingVideoGenerator implements VideoGeneratorContract
     }
 
     /** V2.5 Turbo 只支援 5 和 10 秒，自動 round */
-    private static function normalizeDuration(int $seconds): int
+    public static function normalizeDuration(int $seconds): int
     {
         return $seconds <= 7 ? 5 : 10;
     }

@@ -178,7 +178,7 @@ final class BuildingCaseController
                 $result = $videoGenerator->submitImageToVideo(
                     $shot->image_url,
                     $shot->kling_prompt ?? $shot->flux_prompt,
-                    (int) ($shot->duration_seconds ?: 5),
+                    (int) ($shot->duration_seconds ?: config('services.kling.duration', 5)),
                 );
 
                 $shot->update([
@@ -326,7 +326,7 @@ final class BuildingCaseController
             $result = $videoGenerator->submitImageToVideo(
                 $shot->image_url,
                 $shot->kling_prompt ?? $shot->flux_prompt,
-                (int) ($shot->duration_seconds ?: 5),
+                (int) ($shot->duration_seconds ?: config('services.kling.duration', 5)),
             );
 
             $shot->update([
