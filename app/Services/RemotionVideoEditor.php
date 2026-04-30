@@ -35,6 +35,7 @@ final class RemotionVideoEditor implements VideoEditorContract
         $params->setComposition('BuildingVideo');
         $params->setInputProps($inputProps);
         $params->setCodec('h264');
+        $params->setFramesPerLambda(config('services.remotion.frames_per_lambda', 150));
 
         $response = $client->renderMediaOnLambda($params);
 
@@ -77,10 +78,16 @@ final class RemotionVideoEditor implements VideoEditorContract
         ]);
 
         if ($progress->fatalErrorEncountered) {
+            $errorMessage = $progress->errors[0]->message ?? 'Remotion render encountered a fatal error';
+            Log::error('[RemotionVideoEditor::queryRenderStatus] Fatal error', [
+                'renderId' => $actualRenderId,
+                'errors' => $progress->errors ?? [],
+            ]);
+
             return [
                 'status' => 'failed',
                 'video_url' => null,
-                'error' => 'Remotion render encountered a fatal error',
+                'error' => $errorMessage,
             ];
         }
 

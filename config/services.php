@@ -37,6 +37,7 @@ return [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'version' => env('REMOTION_VERSION', '4.0.454'),
+        'frames_per_lambda' => (int) env('REMOTION_FRAMES_PER_LAMBDA', 150),
     ],
 
 ];
