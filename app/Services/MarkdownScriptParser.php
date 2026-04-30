@@ -284,7 +284,7 @@ final class MarkdownScriptParser
         }
 
         $map = [];
-        $parts = preg_split('/S(\d{2})\s*─+/u', $section, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $parts = preg_split('/S(\d{2})\s*(?:\([^)]*\)\s*)?─+/u', $section, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         for ($i = 1; $i < count($parts); $i += 2) {
             $sid = 'S' . $parts[$i];
