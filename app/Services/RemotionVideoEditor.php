@@ -69,8 +69,17 @@ final class RemotionVideoEditor implements VideoEditorContract
                 'type' => 'status',
                 'renderId' => $renderId,
                 'bucketName' => $this->extractBucketName(),
+                'version' => config('services.remotion.version', '4.0.454'),
             ]),
         ]);
+
+        Log::info('[RemotionVideoEditor::queryRenderStatus]', [
+            'renderId' => $renderId,
+            'payload' => json_decode($result['Payload']->getContents(), true),
+        ]);
+
+        // 重新讀取 payload（getContents 只能讀一次）
+        $result['Payload']->rewind();
 
         $payload = json_decode($result['Payload']->getContents(), true);
 
