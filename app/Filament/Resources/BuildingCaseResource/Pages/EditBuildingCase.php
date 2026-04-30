@@ -71,8 +71,10 @@ class EditBuildingCase extends EditRecord
 
                 // 刪除舊 shots，建立新 shots
                 if (! empty($result['shots'])) {
-                    $this->record->shots()->delete();
+                    $this->record->shots()->forceDelete();
                     foreach ($result['shots'] as $shot) {
+                        $shot['image_status'] = 'pending';
+                        $shot['video_status'] = 'pending';
                         $this->record->shots()->create($shot);
                     }
                 }
