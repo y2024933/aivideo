@@ -102,6 +102,7 @@ final class RemotionVideoEditor implements VideoEditorContract
         $shots = $case->shots->map(fn ($shot) => [
             'videoUrl' => $shot->video_url,
             'durationSec' => (float) $shot->duration_seconds ?: 5,
+            'clipDurationSec' => $shot->duration_seconds <= 7 ? 5 : 10, // Kling 實際產出的長度
             'subtitle' => $shot->subtitle ?? $shot->voiceover_text ?? '',
             'isPublicFacility' => false,
         ])->toArray();

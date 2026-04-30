@@ -233,6 +233,11 @@ final class BuildingCaseController
             'status' => 'done',
         ]);
 
+        // 配音重新生成後，清掉舊的成品影片讓使用者可以重新渲染
+        if ($buildingCase->final_video_url) {
+            $buildingCase->update(['final_video_url' => null, 'render_id' => null]);
+        }
+
         return response()->json($voiceover, 201);
     }
 

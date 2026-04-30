@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `declare(strict_types=1)` 在每個 PHP 檔案頂部。
 - `final class` 除非有繼承需求。
 - Vue: Composition API with `<script setup>`。
+- **測試絕不能打真實付費 API**：phpunit.xml 強制 `APP_USE_REAL_APIS=false`，所有 Feature test 必須 bind stub，任何新增的 test 都要確認不會呼叫 fal.ai / Kling / Azure TTS / Remotion Lambda 等付費服務。
 
 ## 專案概覽
 
