@@ -28,7 +28,9 @@ class ShotsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('shot_order')->label('順序')->sortable(),
                 Tables\Columns\TextColumn::make('duration_seconds')->label('秒數'),
                 Tables\Columns\TextColumn::make('scene_description')->label('場景描述')->limit(30),
-                Tables\Columns\ImageColumn::make('image_url')->label('場景圖'),
+                Tables\Columns\ImageColumn::make('image_url')->label('場景圖')
+                    ->url(fn ($record) => $record->image_url, shouldOpenInNewTab: true)
+                    ->width(80)->height(80),
                 Tables\Columns\TextColumn::make('image_status')->label('圖片狀態')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

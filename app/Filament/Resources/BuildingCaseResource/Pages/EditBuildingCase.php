@@ -25,6 +25,13 @@ class EditBuildingCase extends EditRecord
 {
     protected static string $resource = BuildingCaseResource::class;
 
+    public function getHeading(): string
+    {
+        $status = $this->record->status;
+
+        return "編輯建案：{$this->record->name}（{$status->label()}）";
+    }
+
     protected function getHeaderActions(): array
     {
         return [
