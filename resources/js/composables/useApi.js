@@ -17,4 +17,5 @@ export const useApi = () => ({
     renderVideo: (id) => api.post(`/cases/${id}/render-video`),
     regenerateScene: (caseId, shotId) => api.post(`/cases/${caseId}/regenerate-scene/${shotId}`),
     regenerateVideo: (caseId, shotId) => api.post(`/cases/${caseId}/regenerate-video/${shotId}`),
+    updateVideoSettings: (caseId, settings) => api.put(`/cases/${caseId}/video-settings`, settings),
 })

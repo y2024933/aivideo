@@ -107,6 +107,9 @@ final class MarkdownScriptParser
         $knownTopKeys = [
             'project_name', 'builder_name', 'character_nickname', 'character_dna',
             'location', 'area_range', 'target_audience', 'tone', 'video_length_seconds',
+            'voiceover_full', 'voice_id_preferred',
+            'compliance_watermark', 'compliance_footer',
+            'bgm_keywords', 'review',
             'shots',
         ];
 
@@ -134,6 +137,8 @@ final class MarkdownScriptParser
             ];
         }
 
+        $review = $yaml['review'] ?? [];
+
         return array_filter([
             'name' => $yaml['project_name'] ?? '',
             'builder_name' => $yaml['builder_name'] ?? '',
@@ -144,6 +149,14 @@ final class MarkdownScriptParser
             'target_audience' => $yaml['target_audience'] ?? null,
             'tone' => $yaml['tone'] ?? null,
             'video_length_seconds' => $yaml['video_length_seconds'] ?? null,
+            'voiceover_full' => $yaml['voiceover_full'] ?? null,
+            'voice_id_preferred' => $yaml['voice_id_preferred'] ?? null,
+            'compliance_watermark' => $yaml['compliance_watermark'] ?? null,
+            'compliance_footer' => $yaml['compliance_footer'] ?? null,
+            'bgm_keywords' => $yaml['bgm_keywords'] ?? null,
+            'review_passed' => $review['passed'] ?? false,
+            'review_v2_score' => $review['v2_score'] ?? null,
+            'review_meta' => $review ?: null,
             'shots' => $shots,
             'meta' => $meta ?: null,
         ], fn ($v) => $v !== null);

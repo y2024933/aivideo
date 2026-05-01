@@ -138,6 +138,20 @@ export const useCaseStore = defineStore('case', () => {
         }
     }
 
+    async function updateVideoSettings(settings) {
+        loading.value = true
+        error.value = null
+        try {
+            const { data } = await api.updateVideoSettings(current.value.id, settings)
+            current.value = { ...current.value, ...data }
+        } catch (e) {
+            error.value = e.response?.data?.error ?? '設定儲存失敗'
+            throw e
+        } finally {
+            loading.value = false
+        }
+    }
+
     function refresh() {
         if (current.value?.id) load(current.value.id)
     }
@@ -147,6 +161,6 @@ export const useCaseStore = defineStore('case', () => {
         status, shots, characterOptions, voiceover,
         load, create, generateCharacters, approveCharacter,
         generateScenes, approveImages, generateVoiceover,
-        renderVideo, regenerateScene, regenerateVideo, refresh,
+        renderVideo, regenerateScene, regenerateVideo, updateVideoSettings, refresh,
     }
 })

@@ -4,11 +4,28 @@ import { useRoute } from 'vue-router'
 import { useCaseStore } from '../stores/case'
 import StatusBadge from '../components/StatusBadge.vue'
 import ActionButton from '../components/ActionButton.vue'
+import SubtitleSettings from '../components/SubtitleSettings.vue'
+import TransitionSettings from '../components/TransitionSettings.vue'
+import RemotionPreview from '../components/RemotionPreview.vue'
 
 const route = useRoute()
 const store = useCaseStore()
 
 const regeneratingVideos = ref(new Set())
+const savingSettings = ref(false)
+const settingsSaved = ref(false)
+
+const subtitleSettings = ref({
+    fontSize: 'medium',
+    color: '#ffffff',
+    position: 'bottom',
+    animation: 'slideIn',
+})
+
+const transitionSettings = ref({
+    global: 'crossfade',
+    perShot: {},
+})
 
 async function regenerateVideo(shotId) {
     regeneratingVideos.value.add(shotId)
@@ -48,6 +65,12 @@ function stopPolling() {
 onMounted(async () => {
     await store.load(route.params.id)
     if (store.voiceover?.voice_id) selectedVoice.value = store.voiceover.voice_id
+    // 載入已存設定
+    if (store.current?.subtitle_settings) subtitleSettings.value = { ...subtitleSettings.value, ...store.current.subtitle_settings }
+    if (store.current?.global_transition) transitionSettings.value.global = store.current.global_transition
+    const shotTransitions = {}
+    store.shots.forEach(s => { if (s.transition) shotTransitions[s.id] = s.transition })
+    if (Object.keys(shotTransitions).length) transitionSettings.value.perShot = shotTransitions
     startPolling()
 })
 onUnmounted(stopPolling)
@@ -59,6 +82,51 @@ async function genVoiceover() {
 async function render() {
     await store.renderVideo()
 }
+
+async function saveVideoSettings() {
+    savingSettings.value = true
+    settingsSaved.value = false
+    try {
+        await store.updateVideoSettings({
+            subtitle_settings: subtitleSettings.value,
+            global_transition: transitionSettings.value.global,
+            shots_transitions: transitionSettings.value.perShot,
+        })
+        settingsSaved.value = true
+        setTimeout(() => { settingsSaved.value = false }, 3000)
+    } finally {
+        savingSettings.value = false
+    }
+}
+
+// Remotion 預覽相關計算
+const previewFps = 30
+const overlapFrames = 15 // 0.5s transition overlap
+
+const remotionInputProps = computed(() => ({
+    shots: store.shots.map((shot, i) => ({
+        videoUrl: shot.video_url || '',
+        subtitle: shot.subtitle || '',
+        durationSec: shot.duration_seconds || 5,
+        isPublicFacility: shot.is_public_facility || false,
+        voiceoverUrl: shot.voiceover_url || '',
+        transition: transitionSettings.value.perShot?.[shot.id] || transitionSettings.value.global || 'crossfade',
+    })),
+    subtitleSettings: subtitleSettings.value,
+    globalTransition: transitionSettings.value.global || 'crossfade',
+    watermark: store.current?.compliance_watermark ? { text: store.current.compliance_watermark } : null,
+    publicFacilityLabel: '公設示意圖',
+}))
+
+const previewDurationInFrames = computed(() => {
+    const shots = remotionInputProps.value.shots
+    if (!shots.length) return 1
+    const totalFrames = shots.reduce((sum, s) => sum + Math.round((s.durationSec || 5) * previewFps), 0)
+    const overlaps = Math.max(0, shots.length - 1) * overlapFrames
+    return Math.max(1, totalFrames - overlaps)
+})
+
+const canPreview = computed(() => store.shots.some(s => s.video_url && s.video_status === 'done'))
 
 function statusIcon(status) {
     return { pending: '...', processing: '~', done: 'v', failed: 'x' }[status] ?? '...'
@@ -157,6 +225,29 @@ function statusIconClass(status) {
                     </ActionButton>
                     <p v-if="!videosReady" class="text-xs text-gray-400 mt-1">等待所有動畫完成後才能生成配音</p>
                 </div>
+            </section>
+
+            <!-- 字幕與轉場設定 -->
+            <section class="mb-4 space-y-4">
+                <SubtitleSettings v-model="subtitleSettings" />
+                <TransitionSettings v-model="transitionSettings" :shots="store.shots" />
+                <div class="flex items-center gap-3">
+                    <ActionButton :loading="savingSettings" @click="saveVideoSettings">
+                        儲存設定
+                    </ActionButton>
+                    <span v-if="settingsSaved" class="text-sm text-green-600">已儲存</span>
+                </div>
+            </section>
+
+            <!-- 即時預覽 -->
+            <section v-if="canPreview" class="bg-white rounded-lg border p-6 mb-4">
+                <h3 class="font-semibold text-gray-800 mb-3">即時預覽</h3>
+                <p class="text-xs text-gray-400 mb-3">調整字幕/轉場設定後可即時預覽效果</p>
+                <RemotionPreview
+                    :input-props="remotionInputProps"
+                    :duration-in-frames="previewDurationInFrames"
+                    :fps="previewFps"
+                />
             </section>
 
             <!-- 渲染最終影片 -->

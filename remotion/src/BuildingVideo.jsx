@@ -1,48 +1,75 @@
-import {
-  AbsoluteFill,
-  Audio,
-  Sequence,
-  useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, Audio, Sequence, useVideoConfig } from "remotion";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { slide } from "@remotion/transitions/slide";
+import { fade } from "@remotion/transitions/fade";
 import { Shot } from "./Shot";
 import { Watermark } from "./Watermark";
+
+const TRANSITION_DURATION_SEC = 0.5;
+
+function getPresentation(type) {
+  switch (type) {
+    case "crossfade":
+      return fade();
+    case "slideLeft":
+      return slide({ direction: "from-left" });
+    case "slideRight":
+      return slide({ direction: "from-right" });
+    case "slideUp":
+      return slide({ direction: "from-bottom" });
+    default:
+      return null; // 'cut' 不加轉場
+  }
+}
 
 export const BuildingVideo = ({
   shots,
   bgm,
   watermark,
   publicFacilityLabel,
+  subtitleSettings,
+  globalTransition,
 }) => {
   const { fps } = useVideoConfig();
-  const crossfadeFrames = Math.round(0.5 * fps);
+  const overlapFrames = Math.round(TRANSITION_DURATION_SEC * fps);
 
-  // 計算每段 shot 的起始 frame（含 crossfade 重疊）
-  const shotTimings = [];
-  let offset = 0;
-  shots.forEach((shot, i) => {
-    const durationFrames = Math.round(shot.durationSec * fps);
-    shotTimings.push({ shot, from: offset, durationFrames });
-    offset += durationFrames - (i < shots.length - 1 ? crossfadeFrames : 0);
-  });
+  const resolvedGlobalTransition = globalTransition || "crossfade";
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      {shotTimings.map(({ shot, from, durationFrames }, i) => (
-        <Sequence key={i} from={from} durationInFrames={durationFrames}>
-          <Shot
-            videoUrl={shot.videoUrl}
-            durationFrames={durationFrames}
-            subtitle={shot.subtitle}
-            isPublicFacility={shot.isPublicFacility}
-            publicFacilityLabel={publicFacilityLabel}
-            crossfadeFrames={crossfadeFrames}
-            isFirst={i === 0}
-            isLast={i === shots.length - 1}
-          />
-        </Sequence>
-      ))}
+      {/* 影片 TransitionSeries */}
+      <TransitionSeries>
+        {shots.map((shot, i) => {
+          const durationFrames = Math.round(shot.durationSec * fps);
+          const transitionType = shot.transition ?? resolvedGlobalTransition;
+          const presentation = getPresentation(transitionType);
 
-      {/* Per-shot 配音音軌（不重疊，避免配音互蓋） */}
+          return [
+            <TransitionSeries.Sequence
+              key={`shot-${i}`}
+              durationInFrames={durationFrames}
+            >
+              <Shot
+                videoUrl={shot.videoUrl}
+                subtitle={shot.subtitle}
+                isPublicFacility={shot.isPublicFacility}
+                publicFacilityLabel={publicFacilityLabel}
+                subtitleSettings={subtitleSettings}
+              />
+            </TransitionSeries.Sequence>,
+            // 非最後一段且非 cut 時加轉場
+            i < shots.length - 1 && presentation ? (
+              <TransitionSeries.Transition
+                key={`trans-${i}`}
+                presentation={presentation}
+                timing={linearTiming({ durationInFrames: overlapFrames })}
+              />
+            ) : null,
+          ];
+        })}
+      </TransitionSeries>
+
+      {/* Per-shot 配音音軌（獨立 timing，不受 transition overlap 影響） */}
       {(() => {
         let audioOffset = 0;
         return shots.map((shot, i) => {

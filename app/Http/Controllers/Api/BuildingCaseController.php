@@ -271,6 +271,50 @@ final class BuildingCaseController
         ]);
     }
 
+    public function updateVideoSettings(BuildingCase $buildingCase, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'subtitle_settings' => 'nullable|array',
+            'subtitle_settings.fontSize' => 'sometimes|in:small,medium,large',
+            'subtitle_settings.color' => 'sometimes|string|regex:/^#[0-9a-fA-F]{6}$/',
+            'subtitle_settings.position' => 'sometimes|in:top,center,bottom',
+            'subtitle_settings.animation' => 'sometimes|in:fadeIn,slideIn,typewriter,none',
+            'global_transition' => 'sometimes|in:cut,crossfade,slideLeft,slideRight,slideUp',
+            'shots_transitions' => 'nullable|array',
+            'shots_transitions.*' => 'nullable|in:cut,crossfade,slideLeft,slideRight,slideUp',
+        ]);
+
+        $updates = [];
+        if (array_key_exists('subtitle_settings', $validated)) {
+            $updates['subtitle_settings'] = $validated['subtitle_settings'];
+        }
+        if (array_key_exists('global_transition', $validated)) {
+            $updates['global_transition'] = $validated['global_transition'];
+        }
+
+        // 設定改了，清掉成品影片以便重新渲染
+        if ($updates && $buildingCase->final_video_url) {
+            $updates['final_video_url'] = null;
+            $updates['render_id'] = null;
+        }
+
+        if ($updates) {
+            $buildingCase->update($updates);
+        }
+
+        // 批次更新各 shot 的轉場設定
+        if (! empty($validated['shots_transitions'])) {
+            foreach ($validated['shots_transitions'] as $shotId => $transition) {
+                $buildingCase->shots()->where('id', $shotId)->update(['transition' => $transition]);
+            }
+            if ($buildingCase->final_video_url) {
+                $buildingCase->update(['final_video_url' => null, 'render_id' => null]);
+            }
+        }
+
+        return response()->json($buildingCase->fresh()->load(['shots']));
+    }
+
     public function regenerateScene(BuildingCase $buildingCase, Shot $shot, ImageGeneratorContract $imageGenerator): JsonResponse
     {
         abort_unless($shot->case_id === $buildingCase->id, 404);

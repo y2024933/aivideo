@@ -43,6 +43,8 @@ final class KlingVideoGenerator implements VideoGeneratorContract
                 'model_name' => config('services.kling.model', 'kling-v2-5-turbo'),
                 'image' => $imageRef,
                 'prompt' => $prompt,
+                'negative_prompt' => config('services.kling.negative_prompt', 'blurry, distorted architecture, warped lines, extra limbs, jittery camera, melting surfaces, face deformation'),
+                'cfg_scale' => (float) config('services.kling.cfg_scale', 0.7),
                 'duration' => (string) self::normalizeDuration($durationSeconds),
                 'mode' => config('services.kling.mode', 'std'),
             ]);

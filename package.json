@@ -9,6 +9,7 @@
         "@headlessui/vue": "^1.7.23",
         "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/postcss": "^4.2.4",
+        "@vitejs/plugin-react": "^4.7.0",
         "@vitejs/plugin-vue": "^6.0.6",
         "autoprefixer": "^10.5.0",
         "axios": "^1.15.2",
@@ -21,5 +22,12 @@
         "vite": "^5.0.0",
         "vue": "^3.5.33",
         "vue-router": "^4.6.4"
+    },
+    "dependencies": {
+        "@remotion/player": "^4.0.455",
+        "@remotion/transitions": "^4.0.455",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "remotion": "^4.0.455"
     }
 }

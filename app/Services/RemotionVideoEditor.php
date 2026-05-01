@@ -149,11 +149,19 @@ final class RemotionVideoEditor implements VideoEditorContract
                 'subtitle' => $shot->subtitle ?? $shot->voiceover_text ?? '',
                 'isPublicFacility' => false,
                 'voiceoverUrl' => $shot->voiceover_remote_url ?? ($shot->voiceover_url ? url($shot->voiceover_url) : null),
+                'transition' => $shot->transition,
             ])->toArray();
 
         return [
             'fps' => 30,
             'shots' => $shots,
+            'subtitleSettings' => $case->subtitle_settings ?? [
+                'fontSize' => 'medium',
+                'color' => '#ffffff',
+                'position' => 'bottom',
+                'animation' => 'slideIn',
+            ],
+            'globalTransition' => $case->global_transition ?? 'crossfade',
             'watermark' => [
                 'text' => '3D 示意圖｜實品以建造完成後為準',
             ],

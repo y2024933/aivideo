@@ -27,6 +27,12 @@ final class BuildingCase extends Model
         'script_v1' => 'array',
         'script_v2' => 'array',
         'reviews' => 'array',
+        'compliance_footer' => 'array',
+        'bgm_keywords' => 'array',
+        'review_passed' => 'boolean',
+        'review_v2_score' => 'decimal:1',
+        'review_meta' => 'array',
+        'subtitle_settings' => 'array',
         'cost_usd' => 'decimal:4',
         'completed_at' => 'datetime',
     ];

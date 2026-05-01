@@ -1,43 +1,15 @@
-import {
-  AbsoluteFill,
-  OffthreadVideo,
-  useCurrentFrame,
-  interpolate,
-} from "remotion";
+import { AbsoluteFill, OffthreadVideo } from "remotion";
 import { Subtitle } from "./Subtitle";
 
 export const Shot = ({
   videoUrl,
-  durationFrames,
   subtitle,
   isPublicFacility,
   publicFacilityLabel,
-  crossfadeFrames,
-  isFirst,
-  isLast,
+  subtitleSettings,
 }) => {
-  const frame = useCurrentFrame();
-
-  // Crossfade: 淡入（非第一段）、淡出（非最後一段）
-  const fadeIn = isFirst
-    ? 1
-    : interpolate(frame, [0, crossfadeFrames], [0, 1], {
-        extrapolateRight: "clamp",
-      });
-
-  const fadeOut = isLast
-    ? 1
-    : interpolate(
-        frame,
-        [durationFrames - crossfadeFrames, durationFrames],
-        [1, 0],
-        { extrapolateLeft: "clamp" }
-      );
-
-  const opacity = fadeIn * fadeOut;
-
   return (
-    <AbsoluteFill style={{ opacity }}>
+    <AbsoluteFill>
       <OffthreadVideo
         src={videoUrl}
         style={{
@@ -48,7 +20,7 @@ export const Shot = ({
       />
 
       {/* 字幕 */}
-      {subtitle && <Subtitle text={subtitle} />}
+      {subtitle && <Subtitle text={subtitle} settings={subtitleSettings} />}
 
       {/* 公設示意圖標籤 */}
       {isPublicFacility && publicFacilityLabel && (

@@ -16,6 +16,7 @@ Route::middleware('auth:sanctum')->prefix('cases')->group(function () {
     Route::post('/{buildingCase}/approve-images', [BuildingCaseController::class, 'approveImages']);
     Route::post('/{buildingCase}/generate-voiceover', [BuildingCaseController::class, 'generateVoiceover']);
     Route::post('/{buildingCase}/render-video', [BuildingCaseController::class, 'renderFinalVideo']);
+    Route::put('/{buildingCase}/video-settings', [BuildingCaseController::class, 'updateVideoSettings']);
     Route::post('/{buildingCase}/regenerate-scene/{shot}', [BuildingCaseController::class, 'regenerateScene']);
     Route::post('/{buildingCase}/regenerate-video/{shot}', [BuildingCaseController::class, 'regenerateVideo']);
 });
