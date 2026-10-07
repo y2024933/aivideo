@@ -2,131 +2,82 @@
 
 declare(strict_types=1);
 
-use App\Enums\CaseStatus;
+use App\Enums\ProductStatus;
 use App\Jobs\PollRemotionRenderJob;
-use App\Models\BuildingCase;
-use App\Models\User;
+use App\Models\Product;
 use App\Services\Contracts\VideoEditorContract;
 use App\Services\Stubs\StubVideoEditor;
-use Illuminate\Support\Facades\Queue;
-use Laravel\Sanctum\Sanctum;
 
-beforeEach(function () {
-    Queue::fake();
-    $this->app->bind(VideoEditorContract::class, fn () => new StubVideoEditor());
-    Sanctum::actingAs(User::factory()->create());
+// 原本測 /api/cases/* 的 HTTP endpoint，P0 已移除 Vue SPA 與該組 route，
+// 改成直接測 VideoEditorContract 與輪詢 Job 的行為。完整上架流程測試留給 P10。
+
+function makeRenderingProduct(array $attributes = []): Product
+{
+    return Product::create(['title' => '渲染測試商品', 'status' => ProductStatus::Rendering, ...$attributes]);
+}
+
+it('stub video editor returns a render_id', function () {
+    $result = (new StubVideoEditor())->submitRender(makeRenderingProduct());
+
+    expect($result['render_id'])->toStartWith('stub_render_');
 });
 
-it('submits render and dispatches poll job when all shots done and voiceover exists', function () {
-    $case = BuildingCase::create([
-        'name' => '渲染測試建案',
-        'status' => CaseStatus::ProducingFinal,
-    ]);
+it('propagates exceptions thrown by the video editor', function () {
+    $editor = new class implements VideoEditorContract
+    {
+        public function submitRender(Product $product): array
+        {
+            throw new RuntimeException('Lambda invocation failed');
+        }
 
-    $case->shots()->createMany([
-        ['shot_id' => 'S01', 'shot_order' => 1, 'flux_prompt' => 'p1', 'video_status' => 'done', 'video_url' => 'https://example.com/1.mp4'],
-        ['shot_id' => 'S02', 'shot_order' => 2, 'flux_prompt' => 'p2', 'video_status' => 'done', 'video_url' => 'https://example.com/2.mp4'],
-    ]);
+        public function queryRenderStatus(string $renderId): array
+        {
+            return ['status' => 'failed', 'video_url' => null, 'error' => 'fail'];
+        }
+    };
 
-    $case->voiceovers()->create([
-        'text' => '測試配音',
-        'voice_id' => 'zh-TW-HsiaoChenNeural',
-        'audio_url' => 'https://example.com/vo.mp3',
-        'status' => 'done',
-    ]);
-
-    $response = $this->postJson("/api/cases/{$case->id}/render-video");
-
-    $response->assertOk();
-    $response->assertJsonStructure(['render_id', 'message']);
-
-    // 確認 render_id 已存入 case
-    $case->refresh();
-    expect($case->render_id)->not()->toBeNull();
-
-    Queue::assertPushed(PollRemotionRenderJob::class, 1);
+    expect(fn () => $editor->submitRender(makeRenderingProduct()))
+        ->toThrow(RuntimeException::class, 'Lambda invocation failed');
 });
 
-it('returns 422 when no shots are done', function () {
-    $case = BuildingCase::create(['name' => '未完成測試']);
+it('moves product to final_pending_review when render completes', function () {
+    $product = makeRenderingProduct(['render_id' => 'render_123']);
 
-    $case->shots()->createMany([
-        ['shot_id' => 'S01', 'shot_order' => 1, 'flux_prompt' => 'p1', 'video_status' => 'processing'],
-        ['shot_id' => 'S02', 'shot_order' => 2, 'flux_prompt' => 'p2', 'video_status' => 'pending'],
-    ]);
+    (new PollRemotionRenderJob($product->id, 'render_123'))->handle(new StubVideoEditor());
 
-    $response = $this->postJson("/api/cases/{$case->id}/render-video");
-
-    $response->assertStatus(422);
-    $response->assertJsonPath('error', '尚無任何已完成的影片片段');
-
-    Queue::assertNotPushed(PollRemotionRenderJob::class);
+    $product->refresh();
+    expect($product->status)->toBe(ProductStatus::FinalPendingReview);
+    expect($product->final_video_remote_url)->toBe('https://placehold.co/1080x1920.mp4');
+    expect($product->render_id)->toBeNull();
 });
 
-it('returns 422 when render_id already exists', function () {
-    $case = BuildingCase::create([
-        'name' => '重複渲染測試',
-        'render_id' => 'existing-render-id',
+it('moves product to render_failed and writes status_message when render fails', function () {
+    $product = makeRenderingProduct(['render_id' => 'render_fail']);
+
+    $editor = Mockery::mock(VideoEditorContract::class);
+    $editor->shouldReceive('queryRenderStatus')->once()->andReturn([
+        'status' => 'failed',
+        'video_url' => null,
+        'error' => 'OOM in Lambda',
     ]);
 
-    $case->shots()->create([
-        'shot_id' => 'S01',
-        'shot_order' => 1,
-        'flux_prompt' => 'p1',
-        'video_status' => 'done',
-        'video_url' => 'https://example.com/1.mp4',
-    ]);
+    (new PollRemotionRenderJob($product->id, 'render_fail'))->handle($editor);
 
-    $response = $this->postJson("/api/cases/{$case->id}/render-video");
-
-    $response->assertStatus(422);
-    $response->assertJsonPath('error', '已有渲染任務進行中');
-
-    Queue::assertNotPushed(PollRemotionRenderJob::class);
+    $product->refresh();
+    expect($product->status)->toBe(ProductStatus::RenderFailed);
+    expect($product->status_message)->toBe('OOM in Lambda');
+    expect($product->render_id)->toBeNull();
 });
 
-it('returns 500 when video editor service fails', function () {
-    $this->app->bind(VideoEditorContract::class, function () {
-        return new class implements VideoEditorContract {
-            public function submitRender(\App\Models\BuildingCase $case): array
-            {
-                throw new RuntimeException('Lambda invocation failed');
-            }
+it('moves product to render_failed on polling timeout', function () {
+    $product = makeRenderingProduct(['render_id' => 'render_slow']);
 
-            public function queryRenderStatus(string $renderId): array
-            {
-                return ['status' => 'failed', 'video_url' => null, 'error' => 'fail'];
-            }
-        };
-    });
+    $editor = Mockery::mock(VideoEditorContract::class);
+    $editor->shouldNotReceive('queryRenderStatus');
 
-    $case = BuildingCase::create(['name' => '失敗測試']);
-    $case->shots()->create([
-        'shot_id' => 'S01',
-        'shot_order' => 1,
-        'flux_prompt' => 'p1',
-        'video_status' => 'done',
-        'video_url' => 'https://example.com/1.mp4',
-    ]);
-    $case->voiceovers()->create([
-        'text' => '測試',
-        'voice_id' => 'zh-TW-HsiaoChenNeural',
-        'audio_url' => 'https://example.com/vo.mp3',
-        'status' => 'done',
-    ]);
+    (new PollRemotionRenderJob($product->id, 'render_slow', 20))->handle($editor);
 
-    $response = $this->postJson("/api/cases/{$case->id}/render-video");
-
-    $response->assertStatus(500);
-    $response->assertJsonPath('error', '影片渲染提交失敗');
-});
-
-it('requires authentication', function () {
-    app('auth')->forgetGuards();
-
-    $case = BuildingCase::create(['name' => '未認證測試']);
-
-    $response = $this->postJson("/api/cases/{$case->id}/render-video");
-
-    $response->assertStatus(401);
+    $product->refresh();
+    expect($product->status)->toBe(ProductStatus::RenderFailed);
+    expect($product->status_message)->toBe('影片渲染逾時');
 });

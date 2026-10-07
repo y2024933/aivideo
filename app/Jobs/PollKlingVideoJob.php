@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\ProductStatus;
 use App\Models\Shot;
 use App\Services\Contracts\VideoGeneratorContract;
 use App\Services\VideoDownloader;
@@ -36,11 +37,9 @@ final class PollKlingVideoJob implements ShouldQueue
 
         // 超過 30 次輪詢視為逾時
         if ($this->pollCount >= 30) {
-            $shot->update([
-                'video_status' => 'failed',
-                'video_error' => 'Polling timeout after 30 attempts',
-            ]);
             Log::error('[PollKlingVideoJob::handle] Polling timeout', ['shot_id' => $this->shotId]);
+            $this->handleFailed($shot, 'Polling timeout after 30 attempts');
+
             return;
         }
 
@@ -54,12 +53,38 @@ final class PollKlingVideoJob implements ShouldQueue
 
         match ($result['status']) {
             'succeed' => $this->handleSucceed($shot, $result),
-            'failed' => $shot->update([
-                'video_status' => 'failed',
-                'video_error' => $result['error'] ?? 'Unknown error',
-            ]),
+            'failed' => $this->handleFailed($shot, $result['error'] ?? 'Unknown error'),
             default => self::dispatch($this->shotId, $this->taskId, $this->pollCount + 1)->delay(now()->addSeconds(10)),
         };
+    }
+
+    private function handleFailed(Shot $shot, string $error): void
+    {
+        $shot->update(['video_status' => 'failed', 'video_error' => $error]);
+        $this->syncProductStatus($shot);
+    }
+
+    /**
+     * 全部鏡頭都處理完才推進狀態：有失敗轉 AssetsPartial，否則轉 AssetsPendingReview
+     */
+    private function syncProductStatus(Shot $shot): void
+    {
+        $product = $shot->product;
+
+        if (! $product || $product->status !== ProductStatus::AssetsGenerating) {
+            return;
+        }
+
+        $shots = $product->shots()->get();
+
+        if ($shots->contains(fn (Shot $s) => in_array($s->video_status, ['pending', 'processing'], true))) {
+            return;
+        }
+
+        $product->transitionTo(
+            $shots->contains(fn (Shot $s) => $s->video_status === 'failed') ? ProductStatus::AssetsPartial : ProductStatus::AssetsPendingReview,
+            'system',
+        );
     }
 
     private function handleSucceed(Shot $shot, array $result): void
@@ -68,27 +93,27 @@ final class PollKlingVideoJob implements ShouldQueue
         $remoteUrl = $result['video_url'];
 
         try {
-            $localPath = VideoDownloader::download($remoteUrl);
+            $file = VideoDownloader::download($remoteUrl);
         } catch (\Throwable $e) {
             Log::error('[PollKlingVideoJob] Video download failed', [
                 'shot_id' => $shot->id,
                 'remote_url' => $remoteUrl,
                 'error' => $e->getMessage(),
             ]);
-            $shot->update([
-                'video_status' => 'failed',
-                'video_error' => 'Video download failed: ' . $e->getMessage(),
-            ]);
+            $this->handleFailed($shot, 'Video download failed: ' . $e->getMessage());
+
             return;
         }
 
         $shot->update([
-            'video_url' => $localPath,
-            'video_remote_url' => $remoteUrl,
+            'video_url' => $file->localPath,
+            // Kling 的 URL 會過期，渲染一律吃我們自己的 S3 副本
+            'video_remote_url' => $file->remoteUrl ?? $remoteUrl,
             'video_status' => 'done',
             'video_cost_usd' => $costPerVideo,
         ]);
 
-        $shot->buildingCase->addCost($costPerVideo);
+        $shot->product->addCost($costPerVideo);
+        $this->syncProductStatus($shot);
     }
 }

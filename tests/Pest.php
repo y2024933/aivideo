@@ -19,16 +19,13 @@ uses(
 uses(
     Tests\TestCase::class,
     Illuminate\Foundation\Testing\RefreshDatabase::class,
-)->in('Unit/Services');
+)->in('Unit/Services', 'Unit/Compliance', 'Unit/Models', 'Unit/Llm');
 
-// 測試環境強制用 stub，不打真實 API
-beforeEach(function () {
-    config(['services.use_real_apis' => false]);
-    app()->bind(\App\Services\Contracts\ImageGeneratorContract::class, fn () => new \App\Services\Stubs\StubImageGenerator());
-    app()->bind(\App\Services\Contracts\VideoGeneratorContract::class, fn () => new \App\Services\Stubs\StubVideoGenerator());
-    app()->bind(\App\Services\Contracts\TtsContract::class, fn () => new \App\Services\Stubs\StubTts());
-    app()->bind(\App\Services\Contracts\VideoEditorContract::class, fn () => new \App\Services\Stubs\StubVideoEditor());
-});
+// Unit/Remotion 需要 config()（讀 config/video.php 與 remotion/ 原始碼比對），但不碰 DB
+uses(Tests\TestCase::class)->in('Unit/Shopee', 'Unit/Remotion');
+
+// 「強制用 stub、不打真實 API」已移到 Tests\TestCase::setUp()。
+// 原因：Pest 的 beforeEach 以宣告它的檔案為作用域，寫在 Pest.php 的 hook 不會套用到任何測試。
 
 /*
 |--------------------------------------------------------------------------

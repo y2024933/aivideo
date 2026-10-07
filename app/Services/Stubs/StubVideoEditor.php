@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Stubs;
 
-use App\Models\BuildingCase;
+use App\Models\Product;
 use App\Services\Contracts\VideoEditorContract;
 
 final class StubVideoEditor implements VideoEditorContract
 {
-    public function submitRender(BuildingCase $case): array
+    public function submitRender(Product $product): array
     {
         return ['render_id' => 'stub_render_' . uniqid()];
     }

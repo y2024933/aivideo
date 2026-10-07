@@ -107,57 +107,7 @@ it('throws RuntimeException when API returns error', function () {
     $tts->synthesize('失敗測試');
 })->throws(RuntimeException::class, 'Azure TTS failed: HTTP 401');
 
-// --- 數字轉中文 ---
-
-it('converts single digits to Chinese', function () {
-    $tts = new AzureTts();
-
-    expect($tts->convertMandarinNumbers('0'))->toBe('零');
-    expect($tts->convertMandarinNumbers('1'))->toBe('一');
-    expect($tts->convertMandarinNumbers('9'))->toBe('九');
-});
-
-it('converts teens to Chinese', function () {
-    $tts = new AzureTts();
-
-    expect($tts->convertMandarinNumbers('10'))->toBe('十');
-    expect($tts->convertMandarinNumbers('11'))->toBe('十一');
-    expect($tts->convertMandarinNumbers('19'))->toBe('十九');
-});
-
-it('converts tens to Chinese', function () {
-    $tts = new AzureTts();
-
-    expect($tts->convertMandarinNumbers('20'))->toBe('二十');
-    expect($tts->convertMandarinNumbers('35'))->toBe('三十五');
-    expect($tts->convertMandarinNumbers('99'))->toBe('九十九');
-});
-
-it('converts hundreds to Chinese', function () {
-    $tts = new AzureTts();
-
-    expect($tts->convertMandarinNumbers('100'))->toBe('一百');
-    expect($tts->convertMandarinNumbers('105'))->toBe('一百零五');
-    expect($tts->convertMandarinNumbers('110'))->toBe('一百一十');
-    expect($tts->convertMandarinNumbers('999'))->toBe('九百九十九');
-});
-
-it('converts thousands to Chinese', function () {
-    $tts = new AzureTts();
-
-    expect($tts->convertMandarinNumbers('1000'))->toBe('一千');
-    expect($tts->convertMandarinNumbers('1001'))->toBe('一千零一');
-    expect($tts->convertMandarinNumbers('1010'))->toBe('一千零一十');
-    expect($tts->convertMandarinNumbers('1100'))->toBe('一千一百');
-    expect($tts->convertMandarinNumbers('9999'))->toBe('九千九百九十九');
-});
-
-it('converts numbers within text context', function () {
-    $tts = new AzureTts();
-
-    expect($tts->convertMandarinNumbers('11 樓'))->toBe('十一 樓');
-    expect($tts->convertMandarinNumbers('位於 3 樓的 200 坪空間'))->toBe('位於 三 樓的 二百 坪空間');
-});
+// --- 數字前處理（轉換邏輯本身的測試在 tests/Unit/Support/MandarinNumberTest.php）---
 
 it('preprocesses numbers before sending to Azure', function () {
     Storage::fake('local');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Services\Contracts\TtsContract;
+use App\Support\MandarinNumber;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -27,7 +28,7 @@ final class AzureTts implements TtsContract
     /** @inheritDoc */
     public function synthesize(string $text, string $voiceName = 'zh-TW-HsiaoChenNeural'): array
     {
-        $processedText = $this->convertMandarinNumbers($text);
+        $processedText = MandarinNumber::toChinese($text);
         $ssml = $this->buildSsml($processedText, $voiceName);
 
         $response = Http::withHeaders([
@@ -71,63 +72,6 @@ final class AzureTts implements TtsContract
             'remote_url' => $remoteUrl,
             'duration_seconds' => $durationSeconds,
         ];
-    }
-
-    /** 數字轉中文（支援 0-9999） */
-    public function convertMandarinNumbers(string $text): string
-    {
-        return preg_replace_callback('/(\d+)/', function (array $matches): string {
-            return self::numberToChinese((int) $matches[1]);
-        }, $text);
-    }
-
-    /** 單一數字轉中文 */
-    private static function numberToChinese(int $num): string
-    {
-        $digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-
-        if ($num < 0 || $num > 9999) {
-            return (string) $num; // 超出範圍不轉換
-        }
-
-        if ($num <= 10) {
-            return $num === 10 ? '十' : $digits[$num];
-        }
-
-        $result = '';
-
-        // 千位
-        if ($num >= 1000) {
-            $result .= $digits[(int) ($num / 1000)] . '千';
-            $num %= 1000;
-            if ($num > 0 && $num < 100) {
-                $result .= '零';
-            }
-        }
-
-        // 百位
-        if ($num >= 100) {
-            $result .= $digits[(int) ($num / 100)] . '百';
-            $num %= 100;
-            if ($num > 0 && $num < 10) {
-                $result .= '零';
-            }
-        }
-
-        // 十位
-        if ($num >= 10) {
-            $tens = (int) ($num / 10);
-            // 十幾不需要「一十」，直接「十」（僅用於整體數字就是十幾時）
-            $result .= ($tens === 1 && $result === '' ? '' : $digits[$tens]) . '十';
-            $num %= 10;
-        }
-
-        // 個位
-        if ($num > 0) {
-            $result .= $digits[$num];
-        }
-
-        return $result;
     }
 
     /** 組合 SSML XML */

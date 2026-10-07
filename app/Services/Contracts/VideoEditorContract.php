@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
-use App\Models\BuildingCase;
+use App\Models\Product;
 
 interface VideoEditorContract
 {
@@ -12,7 +12,7 @@ interface VideoEditorContract
      * 組裝最終影片（異步）
      * @return array{render_id: string}
      */
-    public function submitRender(BuildingCase $case): array;
+    public function submitRender(Product $product): array;
 
     /**
      * 查詢渲染狀態

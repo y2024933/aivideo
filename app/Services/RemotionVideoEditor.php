@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\BuildingCase;
+use App\Enums\AudioMode;
+use App\Models\Product;
+use App\Models\Shot;
 use App\Services\Contracts\VideoEditorContract;
 use Illuminate\Support\Facades\Log;
 use Remotion\LambdaPhp\PHPClient;
@@ -12,6 +14,16 @@ use Remotion\LambdaPhp\RenderParams;
 
 final class RemotionVideoEditor implements VideoEditorContract
 {
+    /**
+     * Lambda site 上 bundle 的契約版本。
+     *
+     * 改動 remotion/src 底下的 props 契約（新增、改名、移除任何 inputProps 欄位）時必須
+     * 同步遞增這裡與 remotion/src/ProductVideo.jsx 的 BUILD_TAG，並重新
+     * `cd remotion && npm run deploy`。不一致時 ProductVideo 會直接丟 Error，
+     * 比渲染出一支「運鏡沒生效 / 字幕沒套用」的影片好 debug。
+     */
+    private const EXPECTED_BUILD_TAG = 'v2-kenburns';
+
     private readonly string $functionName;
     private readonly string $serveUrl;
     private readonly string $region;
@@ -25,14 +37,14 @@ final class RemotionVideoEditor implements VideoEditorContract
             ?? throw new \RuntimeException('REMOTION_SERVE_URL is not configured');
     }
 
-    public function submitRender(BuildingCase $case): array
+    public function submitRender(Product $product): array
     {
-        $inputProps = $this->buildInputProps($case);
+        $inputProps = $this->buildInputProps($product);
 
         $client = $this->makeClient();
 
         $params = new RenderParams();
-        $params->setComposition('BuildingVideo');
+        $params->setComposition('ProductVideo');
         $params->setInputProps($inputProps);
         $params->setCodec('h264');
         $params->setFramesPerLambda(config('services.remotion.frames_per_lambda', 150));
@@ -132,44 +144,47 @@ final class RemotionVideoEditor implements VideoEditorContract
     }
 
     /**
-     * 組裝 Remotion inputProps
+     * 組裝 Remotion inputProps。
+     *
+     * 每個欄位在 remotion/src/ 都必須有消費者 —— 沒人讀的欄位只會讓
+     * 「改了 PHP 但影片沒變」這種 bug 更難查。
      */
-    private function buildInputProps(BuildingCase $case): array
+    private function buildInputProps(Product $product): array
     {
-        $case->load(['shots']);
+        $product->load(['shots.productImage']);
 
-        $shots = $case->shots
-            ->filter(fn ($shot) => $shot->video_status === 'done')
+        $isTts = ($product->audio_mode instanceof AudioMode ? $product->audio_mode->value : (string) $product->audio_mode)
+            === AudioMode::Tts->value;
+
+        // renderableUrl() 為 null 就跳過該鏡：Lambda 讀不到 localhost，
+        // 寧可少一鏡也不要用本地路徑 fallback 把整支渲染 404 掉。
+        $shots = $product->shots
+            ->filter(fn (Shot $shot) => $shot->renderableUrl() !== null)
             ->sortBy('shot_order')
             ->values()
-            ->map(fn ($shot) => [
-                'videoUrl' => $shot->video_remote_url ?? url($shot->video_url),
-                'durationSec' => (float) $shot->duration_seconds ?: 5,
-                'clipDurationSec' => KlingVideoGenerator::normalizeDuration((int) ($shot->duration_seconds ?: 5)),
-                'subtitle' => $shot->subtitle ?? $shot->voiceover_text ?? '',
-                'isPublicFacility' => false,
-                'voiceoverUrl' => $shot->voiceover_remote_url ?? ($shot->voiceover_url ? url($shot->voiceover_url) : null),
+            ->map(fn (Shot $shot) => [
+                'kind' => $shot->video_status === 'done' ? 'video' : 'image',
+                'imageUrl' => $shot->image_remote_url,
+                'videoUrl' => $shot->video_remote_url,
+                'durationSec' => (float) $shot->duration_seconds ?: 3.5,
+                'kenBurns' => $shot->ken_burns ?: ($product->default_ken_burns ?: 'auto'),
+                'fit' => $shot->fit ?? $shot->productImage?->suggestedFit() ?? 'contain',
+                // 刻意不 fallback 到 voiceover_text：配音稿是口語長句，拿去當字幕會爆版
+                'subtitle' => (string) $shot->subtitle,
+                'voiceoverUrl' => $isTts ? $shot->voiceover_remote_url : null,
                 'transition' => $shot->transition,
             ])->toArray();
 
         return [
-            'fps' => 30,
+            'expectBuildTag' => self::EXPECTED_BUILD_TAG,
+            'fps' => config('video.fps', 30),
             'shots' => $shots,
-            'subtitleSettings' => $case->subtitle_settings ?? [
-                'fontSize' => 'medium',
-                'color' => '#ffffff',
-                'position' => 'bottom',
-                'animation' => 'slideIn',
-            ],
-            'globalTransition' => $case->global_transition ?? 'crossfade',
-            'watermark' => [
-                'text' => '3D 示意圖｜實品以建造完成後為準',
-            ],
-            'publicFacilityLabel' => '公設示意圖',
-            'brand' => [
-                'name' => $case->name,
-                'slogan' => '',
-            ],
+            'subtitleSettings' => $product->subtitle_settings ?? config('video.subtitle_defaults'),
+            'globalTransition' => $product->global_transition ?: 'crossfade',
+            'watermark' => ['text' => $product->disclosure_prefix ?: config('compliance.disclosure_watermark')],
+            'bgm' => $product->bgm_remote_url
+                ? ['audioUrl' => $product->bgm_remote_url, 'volume' => (float) $product->bgm_volume]
+                : null,
         ];
     }
 

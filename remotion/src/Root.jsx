@@ -1,13 +1,12 @@
 import { Composition } from "remotion";
-import { BuildingVideo } from "./BuildingVideo";
-
-const TRANSITION_DURATION_SEC = 0.5;
+import { ProductVideo } from "./ProductVideo";
+import { totalFrames } from "./timing";
 
 export const RemotionRoot = () => {
   return (
     <Composition
-      id="BuildingVideo"
-      component={BuildingVideo}
+      id="ProductVideo"
+      component={ProductVideo}
       durationInFrames={300}
       fps={30}
       width={1080}
@@ -16,43 +15,47 @@ export const RemotionRoot = () => {
         fps: 30,
         shots: [
           {
-            videoUrl: "https://placehold.co/1080x1920.mp4",
-            durationSec: 5,
+            kind: "image",
+            // 刻意用真實可讀的圖片 URL：.mp4 會讓 remotion studio 預覽炸掉
+            imageUrl: "https://placehold.co/1000x1000/jpeg",
+            videoUrl: null,
+            durationSec: 4,
+            kenBurns: "zoomIn",
+            fit: "contain",
             subtitle: "範例字幕",
-            isPublicFacility: false,
+            voiceoverUrl: null,
+            transition: "crossfade",
+          },
+          {
+            kind: "image",
+            imageUrl: "https://placehold.co/1080x1920/jpeg",
+            videoUrl: null,
+            durationSec: 4,
+            kenBurns: "auto",
+            fit: "cover",
+            subtitle: "第二鏡字幕",
+            voiceoverUrl: null,
+            transition: null,
           },
         ],
-        voiceover: null,
         bgm: null,
-        watermark: { text: "3D 示意圖｜實品以建造完成後為準" },
-        publicFacilityLabel: "公設示意圖",
-        brand: { name: "範例建案", slogan: "" },
+        watermark: { text: "廣告｜含聯盟行銷連結" },
         subtitleSettings: {
           fontSize: "medium",
           color: "#ffffff",
           position: "bottom",
           animation: "slideIn",
+          fontFamily: "default",
+          textStroke: "none",
+          textShadow: "none",
+          bgStyle: "dark",
         },
         globalTransition: "crossfade",
       }}
       calculateMetadata={({ props }) => {
-        const fps = props.fps || 30;
-        const globalTransition = props.globalTransition || "crossfade";
-        const overlapFrames = Math.round(TRANSITION_DURATION_SEC * fps);
+        const fps = props.fps ?? 30;
 
-        let totalFrames = 0;
-        props.shots.forEach((shot, i) => {
-          totalFrames += Math.round(shot.durationSec * fps);
-          if (i < props.shots.length - 1) {
-            const transitionType = shot.transition ?? globalTransition;
-            // cut 不產生 overlap
-            if (transitionType !== "cut") {
-              totalFrames -= overlapFrames;
-            }
-          }
-        });
-
-        return { durationInFrames: Math.max(totalFrames, 1), fps };
+        return { durationInFrames: totalFrames(props.shots, fps, props.globalTransition), fps };
       }}
     />
   );

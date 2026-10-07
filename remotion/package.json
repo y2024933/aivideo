@@ -4,13 +4,14 @@
   "scripts": {
     "dev": "remotion studio",
     "build": "remotion bundle",
-    "deploy": "remotion lambda sites create src/index.js --site-name=aivideo"
+    "deploy": "remotion lambda sites create src/index.js --site-name=aivideo",
+    "check-timing": "node scripts/check-timing.mjs"
   },
   "dependencies": {
-    "remotion": "^4.0",
-    "@remotion/cli": "^4.0",
-    "@remotion/lambda": "^4.0",
-    "@remotion/transitions": "^4.0",
+    "remotion": "4.0.454",
+    "@remotion/cli": "4.0.454",
+    "@remotion/lambda": "4.0.454",
+    "@remotion/transitions": "4.0.454",
     "react": "^18.0",
     "react-dom": "^18.0"
   }

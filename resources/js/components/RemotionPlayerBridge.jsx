@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { Player } from '@remotion/player';
-import { BuildingVideo } from '../../../remotion/src/BuildingVideo';
+import { ProductVideo } from '../../../remotion/src/ProductVideo';
 
 const RemotionPlayerBridge = forwardRef(({ inputProps, durationInFrames, fps = 30 }, ref) => {
   const playerRef = useRef(null);
@@ -14,7 +14,7 @@ const RemotionPlayerBridge = forwardRef(({ inputProps, durationInFrames, fps = 3
   return (
     <Player
       ref={playerRef}
-      component={BuildingVideo}
+      component={ProductVideo}
       inputProps={inputProps}
       durationInFrames={durationInFrames}
       compositionWidth={1080}

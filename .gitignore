@@ -16,3 +16,5 @@ yarn-error.log
 /.vscode
 .DS_Store
 /remotion/node_modules
+/remotion/build
+/remotion/out

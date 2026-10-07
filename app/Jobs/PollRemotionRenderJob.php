@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\CaseStatus;
-use App\Models\BuildingCase;
+use App\Enums\ProductStatus;
+use App\Models\Product;
 use App\Services\Contracts\VideoEditorContract;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,24 +21,24 @@ final class PollRemotionRenderJob implements ShouldQueue
     public int $tries = 1;
 
     public function __construct(
-        public readonly string $caseId,
+        public readonly string $productId,
         public readonly string $renderId,
         public readonly int $pollCount = 0,
     ) {}
 
     public function handle(VideoEditorContract $videoEditor): void
     {
-        $case = BuildingCase::find($this->caseId);
+        $product = Product::find($this->productId);
 
-        if (! $case || $case->final_video_url) {
+        if (! $product || $product->final_video_url) {
             return; // 已完成或已刪除
         }
 
         // 超過 20 次輪詢視為逾時（20 x 15s = 5 分鐘）
         if ($this->pollCount >= 20) {
-            Log::error('[PollRemotionRenderJob::handle] Polling timeout', ['case_id' => $this->caseId]);
-            $case->update(['render_id' => null]);
-            $case->transitionTo(CaseStatus::ProducingFinal, 'system', '影片渲染逾時');
+            Log::error('[PollRemotionRenderJob::handle] Polling timeout', ['product_id' => $this->productId]);
+            $this->markRenderFailed($product, '影片渲染逾時');
+
             return;
         }
 
@@ -46,30 +46,44 @@ final class PollRemotionRenderJob implements ShouldQueue
             $result = $videoEditor->queryRenderStatus($this->renderId);
         } catch (\Throwable $e) {
             Log::error('[PollRemotionRenderJob::handle] 查詢失敗', ['exception' => $e]);
-            self::dispatch($this->caseId, $this->renderId, $this->pollCount + 1)->delay(now()->addSeconds(15));
+            self::dispatch($this->productId, $this->renderId, $this->pollCount + 1)->delay(now()->addSeconds(15));
+
             return;
         }
 
         match ($result['status']) {
-            'completed' => $this->handleCompleted($case, $result),
-            'failed' => $this->handleFailed($case, $result),
-            default => self::dispatch($this->caseId, $this->renderId, $this->pollCount + 1)->delay(now()->addSeconds(15)),
+            'completed' => $this->handleCompleted($product, $result),
+            'failed' => $this->handleFailed($product, $result),
+            default => self::dispatch($this->productId, $this->renderId, $this->pollCount + 1)->delay(now()->addSeconds(15)),
         };
     }
 
-    private function handleCompleted(BuildingCase $case, array $result): void
+    private function handleCompleted(Product $product, array $result): void
     {
-        $case->update(['final_video_url' => $result['video_url'], 'render_id' => null]);
-        $case->transitionTo(CaseStatus::FinalPendingReview, 'system');
+        $product->update([
+            'final_video_url' => $result['video_url'],
+            'final_video_remote_url' => $result['video_url'],
+            'render_id' => null,
+            'status_message' => null,
+        ]);
+        $product->transitionTo(ProductStatus::FinalPendingReview, 'system');
     }
 
-    private function handleFailed(BuildingCase $case, array $result): void
+    private function handleFailed(Product $product, array $result): void
     {
         Log::error('[PollRemotionRenderJob::handleFailed] 渲染失敗', [
-            'case_id' => $case->id,
+            'product_id' => $product->id,
             'error' => $result['error'],
         ]);
-        $case->update(['render_id' => null]);
-        $case->transitionTo(CaseStatus::ProducingFinal, 'system', $result['error']);
+        $this->markRenderFailed($product, $result['error'] ?? '影片渲染失敗');
+    }
+
+    /**
+     * 清掉 render_id、把錯誤寫進 status_message 讓 UI 看得到，並轉為 RenderFailed
+     */
+    private function markRenderFailed(Product $product, string $message): void
+    {
+        $product->update(['render_id' => null, 'status_message' => $message]);
+        $product->transitionTo(ProductStatus::RenderFailed, 'system', $message);
     }
 }
