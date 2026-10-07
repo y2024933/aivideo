@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     config(['services.kling.cost_per_video' => 0.21]);
 
-    $this->product = Product::create(['title' => 'Video Test', 'status' => ProductStatus::AssetsGenerating]);
+    $this->product = Product::create(['title' => 'Video Test', 'status' => ProductStatus::AssetsGenerating, 'video_provider' => 'kling']);
     $this->shot = $this->product->shots()->create([
         'shot_id' => 'S01',
         'shot_order' => 1,

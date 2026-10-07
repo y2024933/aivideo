@@ -9,12 +9,14 @@ use App\Filament\Resources\ProductResource\Pages\EditProduct;
 use App\Filament\Resources\ProductResource\Pages\ListProducts;
 use App\Filament\Resources\ProductResource\RelationManagers\ImagesRelationManager;
 use App\Filament\Resources\ProductResource\RelationManagers\ShotsRelationManager;
+use App\Jobs\GenerateScriptJob;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\Shot;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -67,6 +69,8 @@ it('redirects to the existing record instead of duplicating', function () {
 });
 
 it('walks draft to product_pending_review to product_approved', function () {
+    Queue::fake();
+    config(['video.autopilot.product' => false]);
     $product = Product::factory()->renderable(2)->create();
 
     Livewire::test(EditProduct::class, ['record' => $product->getKey()])->callAction('submitProduct');
@@ -76,6 +80,30 @@ it('walks draft to product_pending_review to product_approved', function () {
     expect($product->refresh()->status)->toBe(ProductStatus::ProductApproved)
         ->and($product->statusHistory()->pluck('to_status')->all())
         ->toBe(['product_approved', 'product_pending_review']);
+
+    // 人工核准 ① 後直接排寫稿，不用再按一次「生成腳本」
+    Queue::assertPushed(GenerateScriptJob::class);
+});
+
+it('autopilot 在資料齊全時自動核准 ① 並排入寫稿', function () {
+    Queue::fake();
+    $product = Product::factory()->renderable(2)->create();
+
+    Livewire::test(EditProduct::class, ['record' => $product->getKey()])->callAction('submitProduct');
+
+    expect($product->refresh()->status)->toBe(ProductStatus::ProductApproved)
+        ->and($product->statusHistory()->where('to_status', 'product_approved')->value('triggered_by'))->toBe('autopilot');
+    Queue::assertPushed(GenerateScriptJob::class);
+});
+
+it('autopilot 在資料不齊時照樣停在 ① 等人', function () {
+    Queue::fake();
+    $product = Product::factory()->create();   // 沒有圖片
+
+    Livewire::test(EditProduct::class, ['record' => $product->getKey()])->callAction('submitProduct');
+
+    expect($product->refresh()->status)->toBe(ProductStatus::ProductPendingReview);
+    Queue::assertNothingPushed();
 });
 
 it('blocks approval when selected images lack an s3 copy', function () {

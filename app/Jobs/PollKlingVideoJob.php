@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\ProductStatus;
 use App\Models\Shot;
 use App\Services\Contracts\VideoGeneratorContract;
+use App\Services\Pipeline;
 use App\Services\VideoDownloader;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -61,30 +61,10 @@ final class PollKlingVideoJob implements ShouldQueue
     private function handleFailed(Shot $shot, string $error): void
     {
         $shot->update(['video_status' => 'failed', 'video_error' => $error]);
-        $this->syncProductStatus($shot);
-    }
 
-    /**
-     * 全部鏡頭都處理完才推進狀態：有失敗轉 AssetsPartial，否則轉 AssetsPendingReview
-     */
-    private function syncProductStatus(Shot $shot): void
-    {
-        $product = $shot->product;
-
-        if (! $product || $product->status !== ProductStatus::AssetsGenerating) {
-            return;
+        if ($shot->product) {
+            app(Pipeline::class)->assetsSettled($shot->product);
         }
-
-        $shots = $product->shots()->get();
-
-        if ($shots->contains(fn (Shot $s) => in_array($s->video_status, ['pending', 'processing'], true))) {
-            return;
-        }
-
-        $product->transitionTo(
-            $shots->contains(fn (Shot $s) => $s->video_status === 'failed') ? ProductStatus::AssetsPartial : ProductStatus::AssetsPendingReview,
-            'system',
-        );
     }
 
     private function handleSucceed(Shot $shot, array $result): void
@@ -114,6 +94,6 @@ final class PollKlingVideoJob implements ShouldQueue
         ]);
 
         $shot->product->addCost($costPerVideo);
-        $this->syncProductStatus($shot);
+        app(Pipeline::class)->assetsSettled($shot->product);
     }
 }

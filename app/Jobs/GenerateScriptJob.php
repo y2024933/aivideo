@@ -18,6 +18,7 @@ use App\Services\Contracts\ScriptWriterContract;
 use App\Services\Llm\ScriptDurationPlanner;
 use App\Services\Llm\ScriptFields;
 use App\Services\Llm\ScriptWriterFactory;
+use App\Services\Pipeline;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
@@ -108,6 +109,7 @@ final class GenerateScriptJob implements ShouldQueue
             if ($report->blocking() === [] && $simplified === [] && $overlong === [] && ! $report->profileBlocked) {
                 $this->persist($product, $output, $report, $zhTw, (string) ($usage['model'] ?? ''));
                 $product->transitionTo(ProductStatus::ScriptPendingReview, 'llm');
+                app(Pipeline::class)->afterScriptGenerated($product);
 
                 return;
             }

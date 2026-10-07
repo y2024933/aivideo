@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\ProductStatus;
 use App\Filament\Resources\ProductResource;
 use App\Filament\Resources\ProductResource\Pages\EditProduct;
+use App\Jobs\GenerateAssetsJob;
 use App\Jobs\GenerateScriptJob;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -17,6 +18,8 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create());
+    // 核准 ② 後會排素材 Job；這裡只測 checkpoint 本身，不讓 sync queue 一路跑到渲染
+    Queue::fake();
 });
 
 /** 跑完 P3 寫稿、停在 checkpoint ② 的商品 */
@@ -60,6 +63,7 @@ it('乾淨的腳本可以核准並轉為腳本已核准', function () {
 
     expect($product->refresh()->status)->toBe(ProductStatus::ScriptApproved)
         ->and($product->compliance_passed)->toBeTrue();
+    Queue::assertPushed(GenerateAssetsJob::class, fn (GenerateAssetsJob $job) => $job->productId === $product->id);
 });
 
 it('有 blocking 違規時拒絕核准且狀態不變', function () {

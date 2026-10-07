@@ -7,8 +7,11 @@ namespace App\Filament\Resources\ProductResource\Pages;
 use App\Data\ComplianceReport;
 use App\Enums\ProductStatus;
 use App\Filament\Resources\ProductResource;
+use App\Jobs\GenerateAssetsJob;
 use App\Jobs\GenerateScriptJob;
+use App\Jobs\SubmitRenderJob;
 use App\Models\Product;
+use App\Services\Pipeline;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -35,6 +38,10 @@ final class EditProduct extends EditRecord
             $this->approveProductAction(),
             $this->generateScriptAction(),
             $this->approveScriptAction(),
+            $this->retryAssetsAction(),
+            $this->approveAssetsAction(),
+            $this->retryRenderAction(),
+            $this->approveFinalAction(),
             $this->acknowledgeFindingAction(),
             $this->archiveAction(),
         ];
@@ -50,7 +57,11 @@ final class EditProduct extends EditRecord
             ->action(function () {
                 $this->save(shouldRedirect: false);
                 $this->record->transitionTo(ProductStatus::ProductPendingReview, 'operator');
-                Notification::make()->success()->title('已送出，待確認')->send();
+                app(Pipeline::class)->afterProductSubmitted($this->record);
+
+                $this->record->refresh()->status === ProductStatus::ProductPendingReview
+                    ? Notification::make()->success()->title('已送出，待確認')->send()
+                    : Notification::make()->success()->title('資料齊全，已自動核准並開始寫稿')->send();
             });
     }
 
@@ -69,7 +80,8 @@ final class EditProduct extends EditRecord
             ->tooltip($blockers === [] ? null : '尚缺：' . implode('、', $blockers))
             ->action(function () {
                 $this->record->transitionTo(ProductStatus::ProductApproved, 'operator');
-                Notification::make()->success()->title('商品資料已確認')->body('下一步：生成腳本（P3）。')->send();
+                app(Pipeline::class)->afterProductApproved($this->record);
+                Notification::make()->success()->title('商品資料已確認')->body('已排入腳本生成，完成後狀態會變成「② 腳本待審核」。')->send();
             });
     }
 
@@ -115,7 +127,69 @@ final class EditProduct extends EditRecord
                 }
 
                 $this->record->transitionTo(ProductStatus::ScriptApproved, 'operator');
-                Notification::make()->success()->title('腳本已核准')->body('下一步：產生素材（P5）。')->send();
+                app(Pipeline::class)->afterScriptApproved($this->record);
+                Notification::make()->success()->title('腳本已核准')->body('已排入配音與動畫，純商品圖模式會自動接著渲染。')->send();
+            });
+    }
+
+    /** 部分素材失敗：只重做失敗的鏡頭，成功的不重付錢 */
+    private function retryAssetsAction(): Actions\Action
+    {
+        return Actions\Action::make('retryAssets')
+            ->label('重試失敗素材')
+            ->icon('heroicon-o-arrow-path')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->visible(fn () => $this->record->status === ProductStatus::AssetsPartial)
+            ->action(function () {
+                GenerateAssetsJob::dispatch($this->record->id);
+                Notification::make()->success()->title('已排入重試')->send();
+            });
+    }
+
+    /** checkpoint ③：素材核准（有 AI 動畫時才會停在這裡） */
+    private function approveAssetsAction(): Actions\Action
+    {
+        return Actions\Action::make('approveAssets')
+            ->label('③ 核准素材並渲染')
+            ->icon('heroicon-o-check-circle')
+            ->color('success')
+            ->requiresConfirmation()
+            ->modalDescription('會送 Remotion Lambda 渲染成品（每支約 $0.05）。')
+            ->visible(fn () => $this->record->status === ProductStatus::AssetsPendingReview)
+            ->action(function () {
+                $this->record->transitionTo(ProductStatus::AssetsApproved, 'operator');
+                app(Pipeline::class)->afterAssetsApproved($this->record);
+                Notification::make()->success()->title('已排入渲染')->body('完成後狀態會變成「④ 成品待審核」。')->send();
+            });
+    }
+
+    private function retryRenderAction(): Actions\Action
+    {
+        return Actions\Action::make('retryRender')
+            ->label('重新渲染')
+            ->icon('heroicon-o-arrow-path')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->visible(fn () => $this->record->status === ProductStatus::RenderFailed)
+            ->action(function () {
+                SubmitRenderJob::dispatch($this->record->id);
+                Notification::make()->success()->title('已排入渲染')->send();
+            });
+    }
+
+    /** checkpoint ④：成品核准 */
+    private function approveFinalAction(): Actions\Action
+    {
+        return Actions\Action::make('approveFinal')
+            ->label('④ 核准成品')
+            ->icon('heroicon-o-check-badge')
+            ->color('success')
+            ->requiresConfirmation()
+            ->visible(fn () => $this->record->status === ProductStatus::FinalPendingReview)
+            ->action(function () {
+                $this->record->transitionTo(ProductStatus::ReadyToPublish, 'operator');
+                Notification::make()->success()->title('成品已核准，待上架')->send();
             });
     }
 
