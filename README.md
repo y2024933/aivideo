@@ -130,3 +130,4 @@ docker compose exec app ./vendor/bin/pest
 - `09_腳本參考/CLAUDE_CODE_BRIEF.md` — 完整專案 Brief
 - `09_腳本參考/07_松韻苑_修正版腳本_v2.md` — 範例腳本
 - `09_腳本參考/09_接案SOP_v2.0_踩坑筆記.md` — 踩坑筆記
+# aivideo
