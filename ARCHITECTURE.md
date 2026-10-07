@@ -22,7 +22,11 @@ flowchart LR
 
     subgraph Queue["Queue（Redis + Horizon）"]
         J1[GenerateScriptJob]
+        JA[GenerateAssetsJob]
+        JV[GenerateShotVoiceoverJob]
+        JK[GenerateShotVideoJob]
         J2[PollKlingVideoJob]
+        JR[SubmitRenderJob]
         J3[PollRemotionRenderJob]
     end
 
@@ -35,19 +39,22 @@ flowchart LR
 
     S3[(S3<br/>素材公開 URL)]
 
+    C1 -->|核准即派工| J1
     D --> J1 --> LLM
     J1 -->|shots 寫入 DB| E
-    E -.->|P5 尚未接線| KL
-    E -.->|P6 尚未接線| TTS
+    E --> JA
+    JA --> JV --> TTS
+    JA --> JK --> KL
     KL --> J2 -->|VideoDownloader| S3
-    J2 --> F
-    F -.->|尚未接線| RL
+    JV -->|Pipeline::assetsSettled| F
+    J2 -->|Pipeline::assetsSettled| F
+    F -->|純商品圖自動放行| JR --> RL
     RL --> J3 --> G
     B -->|ImageDownloader 雙寫| S3
     S3 --> RL
 ```
 
-實線 = 已實作的路徑；虛線 = Contract 與輪詢 Job 已就緒，但「誰來 submit」還沒有呼叫端（見 §7）。
+每個階段結束後由 `App\Services\Pipeline` 決定下一棒，以及該 checkpoint 能不能自動放行（見 §4「接力與自動放行」）。
 
 ---
 
@@ -175,22 +182,47 @@ persist + writeShots（照樣寫進 DB 讓 operator 看得到）→ needs_manual
 
 operator 可直接在 `ShotsRelationManager` 改字幕、配音稿、運鏡、轉場、換圖，所以核准時**重跑**合規（`ProductResource::checkScript()` → `mergeAcknowledged()` 保留已確認的 warning），寫回報告並更新每鏡 `compliance_flags`，再以 `scriptApprovalBlockers()` 把關：有鏡頭、無 profileBlocked、無 blocking、warning 全確認、無簡體字、有揭露前綴。
 
-### P5 素材：B-roll 動畫 — `KlingVideoGenerator` + `PollKlingVideoJob`
+### 接力與自動放行 — `App\Services\Pipeline`
 
+| 時機 | 下一棒 | 自動放行條件（`config('video.autopilot.*')`） |
+|---|---|---|
+| ① 送審 | `afterProductSubmitted` → 核准並派 `GenerateScriptJob` | `product`（預設開）且 `approvalBlockers()` 為空 |
+| ① 人工核准 | `afterProductApproved` → 派 `GenerateScriptJob` | — |
+| 寫稿完成 | `afterScriptGenerated` → 核准 ② 並派素材 | `script`（**預設關**）且零 finding、`scriptApprovalBlockers()` 為空 |
+| ② 核准 | `afterScriptApproved` → 派 `GenerateAssetsJob` | — |
+| 素材全部結束 | `assetsSettled` → `assets_partial` 或 `assets_pending_review` | — |
+| 素材待審 | `afterAssetsReady` → 核准 ③ 並派 `SubmitRenderJob` | `assets`（預設開）且 `video_provider = none`（有 AI 動畫一定停下來看） |
+| ③ 核准 | `afterAssetsApproved` → 派 `SubmitRenderJob` | — |
+
+自動放行的狀態轉移以 `triggered_by = autopilot` 寫進 `product_status_history`。`assetsSettled()` 用 row lock，避免兩個 worker 同時完成最後兩鏡而重複推進狀態。
+
+### P5/P6 素材派工 — `GenerateAssetsJob`
+
+入口狀態為 `script_approved` 或 `assets_partial`（重試）。先把**所有**要做的鏡頭標成 `pending`，再逐鏡派工，否則第一個完成的任務會誤判「全部完成」。已 `done` 的鏡頭不重做，部分失敗重試只補失敗的。
+
+- `audio_mode = tts` 且有配音稿 → `GenerateShotVoiceoverJob`
+- `video_provider = kling` → `GenerateShotVideoJob`
+- 兩者皆無（純商品圖、無配音）→ 直接 `assetsSettled()`
+
+配音狀態只在 TTS 模式才計入完成判斷：`GenerateScriptJob` 在 `bgm_only` 也會寫配音稿並標 `pending`。
+
+### P5 素材：B-roll 動畫 — `GenerateShotVideoJob` + `KlingVideoGenerator` + `PollKlingVideoJob`
+
+- `GenerateShotVideoJob`：用 `image_remote_url`（S3）送 Kling，prompt 取 `shots.video_prompt`，沒填就用「商品本體不可變形」的預設 prompt；送出失敗直接標 `failed`。
 - `submitImageToVideo()`：Kling V2.5 Turbo（JWT HS256 認證），秒數只能 5 或 10（`normalizeDuration`），本地圖轉 base64。
 - `PollKlingVideoJob`：每 10 秒輪詢、上限 30 次。成功 → `VideoDownloader` 下載並雙寫 S3（Kling URL 會過期，渲染一律用自家 S3 副本）→ `video_status=done`、記成本。
-- 全部鏡頭不再是 `pending`/`processing` 時推進狀態：有失敗 → `assets_partial`，否則 → `assets_pending_review`。
+- 成功或失敗都呼叫 `Pipeline::assetsSettled()`，由它判斷是否全部結束。
 - `video_provider = none` 時不產動畫，鏡頭直接用商品圖 + Ken Burns。`dola` 為規劃中的 provider（`BrowserTaskType::DolaGenerateVideo`）。
 
-### P6 素材：配音 — `AzureTts`
+### P6 素材：配音 — `GenerateShotVoiceoverJob` + `AzureTts`
 
-`synthesize()`：先 `MandarinNumber::toChinese()` 把數字轉中文讀法 → SSML → MP3，本地 + S3 雙寫，時長用字數 × 0.35 秒估算。預設聲音 `zh-TW-HsiaoChenNeural`（可選聲音見 `ProductResource::VOICES`）。
+`GenerateShotVoiceoverJob` 用 `products.voice_id_preferred`（預設曉臻）合成，沒有 S3 `remote_url` 視為失敗（Lambda 讀不到本地檔）。成功後寫 `voiceover_*` 欄位、一筆 `Voiceover`，並以 `ShotDurationEstimator::fromTts()` 重算該鏡 `duration_seconds`（padding 0.6s > overlap 0.5s，避免相鄰配音疊音）。
 
-TTS 完成後應以 `ShotDurationEstimator::fromTts()` 重算每鏡秒數（padding 0.6s > overlap 0.5s，避免相鄰配音疊音）。
+`AzureTts::synthesize()`：先 `MandarinNumber::toChinese()` 把數字轉中文讀法 → SSML → MP3，本地 + S3 雙寫，時長用字數 × 0.35 秒估算。預設聲音 `zh-TW-HsiaoChenNeural`（可選聲音見 `ProductResource::VOICES`）。
 
 ### Checkpoint ③ → P7 渲染 — `RemotionVideoEditor` + `PollRemotionRenderJob`
 
-送出前必須 `Product::renderBlockers()` 為空：可渲染鏡頭 ≥ 2、無簡體字、無大陸字形、`compliance_passed`、fingerprint 為最新、有揭露前綴、TTS 模式下配音全完成、沒有進行中的 `render_id`。（渲染廢片要花錢，寧可送出前擋。）
+`SubmitRenderJob`（入口 `assets_approved` / `render_failed`）送出前必須 `Product::renderBlockers()` 為空：可渲染鏡頭 ≥ 2、無簡體字、無大陸字形、`compliance_passed`、fingerprint 為最新、有揭露前綴、TTS 模式下配音全完成、沒有進行中的 `render_id`。（渲染廢片要花錢，寧可送出前擋。）不為空時照樣走 `rendering → render_failed`，把原因寫進 `status_message`，自動放行觸發時才看得到。
 
 `submitRender()` 呼叫 `renderMediaOnLambda`（composition `ProductVideo`、h264、`frames_per_lambda` 預設 150），把 `{renderId, bucketName}` JSON 存進 `products.render_id`。
 `PollRemotionRenderJob` 每 15 秒輪詢、上限 20 次（約 5 分鐘）：完成 → 寫 `final_video_url`、清 `render_id` → `final_pending_review`；失敗／逾時 → `status_message` + `render_failed`。
@@ -277,17 +309,17 @@ scripts/check-timing.mjs  timing.js 的 node:assert smoke test（刻意不裝 te
 
 ## 8. 目前實作狀態與已知落差
 
-**已接線**：P1 建立、P2 圖片、checkpoint ①、P3 寫稿 + 合規重試、checkpoint ②、Kling 與 Remotion 的輪詢 Job、各服務的 Contract 實作。
+**已接線**：P1 建立、P2 圖片、checkpoint ①～④、P3 寫稿 + 合規重試、P5 Kling 動畫、P6 配音、P7 渲染，以及各 checkpoint 的自動放行。後台按鈕：重試失敗素材（`assets_partial`）、重新渲染（`render_failed`）。
 
-**尚未接線**（`app/` 內找不到呼叫端）：
+**尚未接線**：
 
-- `script_approved → assets_generating`：沒有程式呼叫 `submitImageToVideo()`、`synthesize()`，也沒有 dispatch `PollKlingVideoJob`。
-- TTS 完成後以 `fromTts()` 重算秒數、寫 `Voiceover`、更新 `voiceover_status`。
-- checkpoint ③ / ④ 的 Filament action，以及呼叫 `submitRender()` + dispatch `PollRemotionRenderJob`。
-- `BrowserTask` 的執行端（商品抓取、短連結、發布草稿、Dola）與 `importing` 流程。
+- `BrowserTask` 的執行端（商品抓取、短連結、發布草稿、Dola）與 `importing` 流程；`ready_to_publish` 之後的上架。
+- Dola 動畫 provider（選了 `dola` 目前不會產動畫，但也不會自動放行 ③）。
 
-**已知不一致**：
+**已知不一致與風險**：
 
 - `auto` 運鏡輪替序列兩邊不同：`Shot::AUTO_KEN_BURNS` 為 zoomIn → panRight → zoomOut → panLeft → zoomInPanUp → zoomOutPanDown，`kenBurns.js` 的 `AUTO_CYCLE` 為 zoomIn → panLeft → zoomOut → panRight → zoomInPanUp → panUp。實際渲染以 JS 為準（PHP 傳的是原始 `auto`），`Shot::effectiveKenBurns()` 目前沒有呼叫端。
 - `AzureTts` 回傳 `remote_url`，但 `TtsContract` 的 `@return` 只宣告 `audio_url` 與 `duration_seconds`。
+- `ShotDurationEstimator::fromTts()` 上限 6 秒，配音超過約 5.4 秒的鏡頭會被下一鏡切掉尾巴。
+- Kling 只產 5／10 秒影片，鏡頭秒數 ≤ 6 時一律送 5 秒；6 秒的鏡頭最後約 1 秒沒有畫面可播。
 - `PollRemotionRenderJob` 把 Lambda 輸出 URL 同時寫進 `final_video_url` 與 `final_video_remote_url`，沒有下載到本地。

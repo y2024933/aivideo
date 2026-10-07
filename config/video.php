@@ -31,4 +31,14 @@ return [
         'bgStyle' => 'dark',
     ],
 
+    /*
+    | 自動放行（App\Services\Pipeline）：gate 全過就跳過該 checkpoint，任何一條不過照樣停下等人。
+    | ② 腳本預設關閉 —— 違規的法律責任在 operator 身上，要自動放行請明確打開。
+    */
+    'autopilot' => [
+        'product' => filter_var(env('AUTOPILOT_PRODUCT', true), FILTER_VALIDATE_BOOLEAN),
+        'script' => filter_var(env('AUTOPILOT_SCRIPT', false), FILTER_VALIDATE_BOOLEAN),
+        'assets' => filter_var(env('AUTOPILOT_ASSETS', true), FILTER_VALIDATE_BOOLEAN),
+    ],
+
 ];
