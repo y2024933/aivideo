@@ -9,6 +9,7 @@ use App\Enums\ProductStatus;
 use App\Filament\Resources\ProductResource;
 use App\Jobs\GenerateAssetsJob;
 use App\Jobs\GenerateScriptJob;
+use App\Jobs\ScrapeShopeeProductJob;
 use App\Jobs\SubmitRenderJob;
 use App\Models\Product;
 use App\Services\Pipeline;
@@ -34,6 +35,7 @@ final class EditProduct extends EditRecord
     {
         return [
             ...parent::getFormActions(),
+            $this->rescrapeShopeeAction(),
             $this->submitProductAction(),
             $this->approveProductAction(),
             $this->generateScriptAction(),
@@ -45,6 +47,29 @@ final class EditProduct extends EditRecord
             $this->acknowledgeFindingAction(),
             $this->archiveAction(),
         ];
+    }
+
+    /**
+     * 重新抓取蝦皮資料。
+     *
+     * 這顆是 import_failed 唯一的出路（import_failed 只能轉回 importing），
+     * 沒有它的話抓取失敗的商品就只能人工補完整份資料。
+     * ignoreTimeWindow = true：人已經在電腦前面了，時段限制本來是為了擋無人值守的批次。
+     */
+    private function rescrapeShopeeAction(): Actions\Action
+    {
+        return Actions\Action::make('rescrapeShopee')
+            ->label('重新抓取蝦皮資料')
+            ->icon('heroicon-o-arrow-down-on-square')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->modalDescription('會用瀏覽器重抓商品資料並覆蓋標題、價格與圖片（約 1–3 分鐘）。每小時抓取次數上限仍然有效。')
+            ->visible(fn () => filled($this->record->shopee_item_id)
+                && in_array($this->record->status, [ProductStatus::Draft, ProductStatus::ImportFailed, ProductStatus::ProductPendingReview, ProductStatus::NeedsManual], true))
+            ->action(function () {
+                ScrapeShopeeProductJob::dispatch($this->record->id, ignoreTimeWindow: true);
+                Notification::make()->success()->title('已排入重新抓取')->body('完成後狀態會變成「① 商品資料待確認」。')->send();
+            });
     }
 
     /** 草稿送出人工確認（checkpoint ① 的入口） */

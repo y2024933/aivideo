@@ -18,8 +18,15 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create());
-    // 核准 ② 後會排素材 Job；這裡只測 checkpoint 本身，不讓 sync queue 一路跑到渲染
-    Queue::fake();
+    // 核准 ② 後會排素材 Job；這裡只測 checkpoint 本身，不讓它一路跑到渲染。
+    //
+    // ⚠️ 只能 fake GenerateAssetsJob 這一個，不可以用無參數的 Queue::fake()。
+    //    GenerateScriptJob implements ShouldQueue，而 Laravel 10 的
+    //    Dispatcher::dispatchSync() 對 ShouldQueue 的 job 走的是
+    //    dispatchToQueue($command->onConnection('sync'))，會經過 queue manager
+    //    → 整包 fake 會連 pendingReviewProduct() 裡設定用的 dispatch_sync 一起攔掉，
+    //    商品停在 ProductApproved，所有測試都會以錯誤的前提開始。
+    Queue::fake([GenerateAssetsJob::class]);
 });
 
 /** 跑完 P3 寫稿、停在 checkpoint ② 的商品 */

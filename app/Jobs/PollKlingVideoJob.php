@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Shot;
-use App\Services\Contracts\VideoGeneratorContract;
+use App\Services\Video\VideoGeneratorFactory;
 use App\Services\Pipeline;
 use App\Services\VideoDownloader;
 use Illuminate\Bus\Queueable;
@@ -27,7 +27,7 @@ final class PollKlingVideoJob implements ShouldQueue
         public readonly int $pollCount = 0,
     ) {}
 
-    public function handle(VideoGeneratorContract $videoGenerator): void
+    public function handle(VideoGeneratorFactory $factory): void
     {
         $shot = Shot::find($this->shotId);
 
@@ -42,6 +42,13 @@ final class PollKlingVideoJob implements ShouldQueue
 
             return;
         }
+
+        // ⚠️ 必須用「這個 shot 自己的 provider」而不是全域綁定。
+        //    VIDEO_PROVIDER 預設是 none，而 provider 可以逐商品／逐鏡頭覆寫 ——
+        //    拿全域綁定會解析到 NullVideoGenerator，queryTaskStatus() 丟例外後
+        //    被下面的 catch 吞掉重排，空轉 30 次才報「Polling timeout」，
+        //    錯誤訊息還會誤導成「Kling 太慢」。
+        $videoGenerator = $factory->resolveFor($shot);
 
         try {
             $result = $videoGenerator->queryTaskStatus($this->taskId);

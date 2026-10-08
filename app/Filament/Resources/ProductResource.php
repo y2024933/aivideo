@@ -19,6 +19,7 @@ use App\Services\Compliance\TraditionalChineseValidator;
 use App\Services\ImageDownloader;
 use App\Services\Llm\ScriptFields;
 use App\Services\Llm\ScriptWriterFactory;
+use App\Services\Video\VideoGeneratorFactory;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -94,7 +95,16 @@ final class ProductResource extends Resource
                 Forms\Components\Select::make('audio_mode')->label('音訊模式')->options(AudioMode::class)->default('none')->live(),
                 Forms\Components\Select::make('voice_id_preferred')->label('配音聲音')->options(self::VOICES)
                     ->visible(fn (Forms\Get $get) => $get('audio_mode') === AudioMode::Tts->value),
-                Forms\Components\Select::make('video_provider')->label('動畫供應商')->options(VideoProvider::class)->default('none'),
+                Forms\Components\Select::make('video_provider')->label('動畫供應商')->live()
+                    // 只列設定齊全的（availableOptions）—— 列出缺 key 的 kling 或未實作的 dola，
+                    // operator 選了之後只會整批鏡頭 video_failed
+                    ->options(fn () => app(VideoGeneratorFactory::class)->availableOptions())
+                    ->placeholder(fn () => '使用全域預設（' . app(VideoGeneratorFactory::class)->default()->getLabel() . '）')
+                    ->helperText('none = 純商品圖 Ken Burns（$0）；kling = Kling AI 動畫（$0.21／5 秒／鏡）；'
+                        . 'dola = 尚未實作，選到也會明確失敗。留空就用 .env 的 VIDEO_PROVIDER。'),
+                Forms\Components\Placeholder::make('video_cost_estimate')->label('本支預估 AI 動畫成本')
+                    ->visible(fn (?Product $record) => $record !== null)
+                    ->content(fn (Product $record) => self::videoCostEstimate($record)),
                 Forms\Components\Select::make('global_transition')->label('全域轉場')->options(self::TRANSITIONS)->default('crossfade'),
                 Forms\Components\Select::make('default_ken_burns')->label('預設運鏡')->options(KenBurns::class)->default('auto'),
                 Forms\Components\Select::make('script_provider')->label('寫稿模型')
@@ -148,6 +158,19 @@ final class ProductResource extends Resource
                     ->view('filament.components.status-poller')
                     ->dehydrated(false)
                     ->visible(fn ($record) => $record?->status?->isProcessing() ?? false)
+                    ->columnSpanFull(),
+                // 降級抓取的警示刻意放在最上面且不可收起：operator 不知道資料來源不可靠的話，
+                // 核准 ① 等於用錯的價格去寫稿、渲染、上架。
+                Forms\Components\Placeholder::make('degraded_scrape_warning')->label('')
+                    ->visible(fn (?Product $record) => $record?->hasDegradedScrape() ?? false)
+                    ->content(new HtmlString(
+                        '<div class="rounded-lg border border-warning-400 bg-warning-50 p-3 text-warning-800 dark:bg-warning-950/40 dark:text-warning-300">'
+                        . '<strong>⚠️ 降級抓取（DOM 解析）</strong><br>'
+                        . '這筆商品資料不是從蝦皮官方 API 攔下來的，而是從頁面 DOM 撈出來的。'
+                        . '價格、評分、銷量與規格可能缺漏或錯位，<strong>系統不會自動放行 checkpoint ①</strong>，'
+                        . '請對照蝦皮商品頁逐欄核對後再核准。'
+                        . '</div>'
+                    ))
                     ->columnSpanFull(),
                 Forms\Components\Placeholder::make('status_label')->label('狀態')
                     ->content(fn ($record) => $record?->status?->getLabel() ?? '新商品'),
@@ -204,6 +227,26 @@ final class ProductResource extends Resource
     }
 
     /**
+     * 本支影片的 AI 動畫預估成本：Σ（鏡頭秒數 × 該鏡頭 provider 的每秒單價）。
+     *
+     * 逐鏡算而不是「鏡頭數 × 單價」—— 鏡頭可以各自覆寫供應商，
+     * 而且 Kling 是按秒計費（$0.21／5 秒）。
+     */
+    public static function videoCostEstimate(Product $product): string
+    {
+        $factory = app(VideoGeneratorFactory::class);
+        $cost = $factory->estimatedCostUsd($product);
+
+        $breakdown = $product->shots()->get()
+            ->groupBy(fn (Shot $shot) => $factory->providerFor($shot->setRelation('product', $product))->value)
+            ->map(fn ($shots, string $provider) => (VideoProvider::from($provider)->getLabel()) . ' × ' . $shots->count() . ' 鏡')
+            ->values()
+            ->implode('、');
+
+        return sprintf('約 $%.2f 美金', $cost) . ($breakdown === '' ? '（尚無鏡頭）' : "（{$breakdown}）");
+    }
+
+    /**
      * checkpoint ① 的 gate：少任一項都不給核准。
      * remote_url 是 Remotion Lambda 唯一能讀到的圖片來源，沒有就等於渲染必 404。
      *
@@ -246,7 +289,11 @@ final class ProductResource extends Resource
         $checker = app(AdComplianceChecker::class);
 
         return $checker->mergeAcknowledged(
-            $checker->check(ScriptFields::fromProduct($product), (string) ($product->compliance_profile ?: 'general')),
+            $checker->check(
+                ScriptFields::fromProduct($product),
+                (string) ($product->compliance_profile ?: 'general'),
+                ['disclosure_prefix' => (string) $product->disclosure_prefix],
+            ),
             $product->compliance_report,
         );
     }

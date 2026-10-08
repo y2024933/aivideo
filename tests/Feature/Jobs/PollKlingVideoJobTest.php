@@ -42,7 +42,8 @@ it('updates shot to done when task succeeds', function () {
 
     $this->app->instance(VideoGeneratorContract::class, $mock);
 
-    (new PollKlingVideoJob($this->shot->id, 'task_123'))->handle($mock);
+    app()->instance(VideoGeneratorContract::class, $mock);
+    app()->call([new PollKlingVideoJob($this->shot->id, 'task_123'), 'handle']);
 
     $this->shot->refresh();
     expect($this->shot->video_status)->toBe('done');
@@ -79,7 +80,8 @@ it('marks as failed when video download fails', function () {
             'error' => null,
         ]);
 
-    (new PollKlingVideoJob($this->shot->id, 'task_123'))->handle($mock);
+    app()->instance(VideoGeneratorContract::class, $mock);
+    app()->call([new PollKlingVideoJob($this->shot->id, 'task_123'), 'handle']);
 
     $this->shot->refresh();
     expect($this->shot->video_status)->toBe('failed');
@@ -105,7 +107,8 @@ it('re-dispatches when task is still processing', function () {
             'error' => null,
         ]);
 
-    (new PollKlingVideoJob($this->shot->id, 'task_123', 5))->handle($mock);
+    app()->instance(VideoGeneratorContract::class, $mock);
+    app()->call([new PollKlingVideoJob($this->shot->id, 'task_123', 5), 'handle']);
 
     Queue::assertPushed(PollKlingVideoJob::class, function ($job) {
         return $job->shotId === $this->shot->id
@@ -124,7 +127,8 @@ it('keeps product in assets_generating while other shots are still processing', 
         'error' => 'rejected',
     ]);
 
-    (new PollKlingVideoJob($this->shot->id, 'task_123'))->handle($mock);
+    app()->instance(VideoGeneratorContract::class, $mock);
+    app()->call([new PollKlingVideoJob($this->shot->id, 'task_123'), 'handle']);
 
     expect($this->product->refresh()->status)->toBe(ProductStatus::AssetsGenerating);
 });
@@ -139,7 +143,8 @@ it('updates shot to failed when task fails', function () {
             'error' => 'Content moderation rejected',
         ]);
 
-    (new PollKlingVideoJob($this->shot->id, 'task_123'))->handle($mock);
+    app()->instance(VideoGeneratorContract::class, $mock);
+    app()->call([new PollKlingVideoJob($this->shot->id, 'task_123'), 'handle']);
 
     $this->shot->refresh();
     expect($this->shot->video_status)->toBe('failed');
@@ -150,7 +155,8 @@ it('marks as failed on polling timeout (pollCount >= 30)', function () {
     $mock = Mockery::mock(VideoGeneratorContract::class);
     $mock->shouldNotReceive('queryTaskStatus');
 
-    (new PollKlingVideoJob($this->shot->id, 'task_123', 30))->handle($mock);
+    app()->instance(VideoGeneratorContract::class, $mock);
+    app()->call([new PollKlingVideoJob($this->shot->id, 'task_123', 30), 'handle']);
 
     $this->shot->refresh();
     expect($this->shot->video_status)->toBe('failed');

@@ -52,6 +52,74 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # ⚠️ browser 與 queue-browser 都掛 profiles，`docker compose up -d` 不會啟動它們。
+  #    啟動方式：docker compose --profile browser up -d
+  #    生產機刻意不跑瀏覽器（BROWSER_SERVICE_URL 留空 → 誤派的 job 立刻失敗）。
+  browser:
+    build:
+      context: ./browser
+      dockerfile: Dockerfile
+    container_name: aivideo-browser
+    profiles: ["browser"]
+    working_dir: /app
+    # ⚠️ ipc: host 是必須的。Docker 預設 /dev/shm 只有 64MB，Chromium 開幾個 tab
+    #    就會 SIGBUS 崩掉，而且崩法看起來像「網頁載不出來」，極難 debug。
+    ipc: host
+    # ⚠️ init: true 收殭屍 process。Chromium 會 fork 一堆 renderer，沒有 init
+    #    的話 PID 1 是 node，不會 reap，跑幾十次任務後容器就被 zombie 塞滿。
+    init: true
+    ports:
+      - "3031:3031"
+    environment:
+      PORT: "3031"
+      BROWSER_SERVICE_TOKEN: "${BROWSER_SERVICE_TOKEN:-dev-browser-token}"
+      SHOPEE_PROFILE_DIR: /profiles
+      ARTIFACTS_DIR: /artifacts
+      TZ: Asia/Taipei
+    volumes:
+      # ⚠️ browser_profiles 必須是 named volume，不可 bind mount macOS 檔案系統。
+      #    Chrome 的 user-data-dir 是大量小檔 + SQLite + flock()，gRPC-FUSE / VirtioFS
+      #    對這組合支援很差 → profile 損壞，然後每次啟動都要重新 SMS OTP。
+      - browser_profiles:/profiles
+      - browser_artifacts:/artifacts
+    shm_size: "1gb"
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+    restart: unless-stopped
+
+  queue-browser:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: aivideo-queue-browser
+    profiles: ["browser"]
+    working_dir: /var/www/html
+    # 專屬 worker：browser queue 必須序列化（併發抓取是最明顯的機器人特徵），
+    # tries=1 因為重試與 backoff 都在 PlaywrightBrowserAutomation 內部做。
+    command: >-
+      sh -lc "if [ ! -f vendor/autoload.php ]; then composer install; fi
+      && php artisan queue:work redis --queue=browser --sleep=3 --tries=1 --timeout=600 --max-time=3600"
+    volumes:
+      - ./:/var/www/html
+      - vendor_data:/var/www/html/vendor
+      - storage_data:/var/www/html/storage
+    env_file:
+      - .env.docker
+    environment:
+      DB_SOCKET: ""
+      BROWSER_SERVICE_URL: "http://browser:3031"
+      BROWSER_SERVICE_TOKEN: "${BROWSER_SERVICE_TOKEN:-dev-browser-token}"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      browser:
+        condition: service_started
+    restart: unless-stopped
+
   web:
     image: nginx:1.27-alpine
     container_name: aivideo-web
@@ -86,6 +154,10 @@ services:
     image: mysql:8.4
     container_name: aivideo-mysql
     ports:
+      # ⚠️ 生產機必須改成綁 Tailscale IP（例："100.64.0.1:3308:3306"）。
+      #    短語法的 "3308:3306" 等於 0.0.0.0:3308 —— 綁在所有介面上，含公網，
+      #    而且 Docker 會自己改 iptables 的 DOCKER 鏈、繞過 ufw，
+      #    「我有開 ufw」不構成保護。詳見 deploy/README.md 第 2 節。
       - "3308:3306"
     environment:
       MYSQL_DATABASE: aivideo
@@ -104,6 +176,10 @@ services:
     image: redis:7-alpine
     container_name: aivideo-redis
     ports:
+      # ⚠️ 生產機必須改成綁 Tailscale IP，並加上 requirepass。
+      #    混合部署時 Mac 會連這個 Redis（兩機共用佇列是整套架構的關鍵），
+      #    但無密碼的 Redis 暴露在公網 = 可以塞任意序列化 payload 進 queue
+      #    = 在生產機上任意執行程式碼。詳見 deploy/README.md 第 2 節。
       - "6380:6379"
     volumes:
       - redis_data:/data
@@ -133,3 +209,6 @@ volumes:
   node_modules_data:
   storage_data:
   vendor_data:
+  # ⚠️ 不要改成 bind mount。見 browser service 的註解。
+  browser_profiles:
+  browser_artifacts:

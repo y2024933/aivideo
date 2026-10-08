@@ -14,8 +14,13 @@ use App\Services\Stubs\StubTts;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
-// phpunit.xml 的 QUEUE_CONNECTION=sync：派出去的 Job 會當場執行，一個 dispatch 就能
-// 驗整條 ② → ③ → 渲染 → ④ 的接力。所有外部服務都是 TestCase 綁的 stub。
+// 派出去的 Job 會當場執行，一個 dispatch 就能驗整條 ② → ③ → 渲染 → ④ 的接力。
+// 所有外部服務都是 TestCase 綁的 stub。
+//
+// ⚠️ sync 是 tests/TestCase::setUp() 用 config() 強制的，**不是** phpunit.xml 的功勞。
+//    phpunit.xml:27 的 QUEUE_CONNECTION=sync 會被 .env.docker 的 redis 蓋掉
+//    （docker compose 注入成容器真實環境變數，$_SERVER 已有值時 phpunit 蓋不過）。
+//    靠 phpunit.xml 的話 dispatch() 會把 job 丟進 Redis，測試只會看到「狀態沒變」。
 
 /** 腳本已核准、可以直接進素材階段的商品 */
 function scriptApprovedProduct(array $attributes = [], int $shots = 3): Product
@@ -75,6 +80,9 @@ it('bgm_only 模式不會因為寫稿留下的 pending 配音而卡住', functio
 it('有 Kling 動畫時停在 ③ 素材待審核，不自動渲染', function () {
     Storage::fake('public');
     Http::fake(['placehold.co/*' => Http::response('fake-mp4', 200)]);
+    // P6 起 kling 要「設定齊全」才派工（缺 key 會明確失敗），這裡釘死假金鑰，
+    // 不要讓這條測試的結果取決於開發機 .env 有沒有真的 KLING_ACCESS_KEY
+    config(['services.kling.access_key' => 'test-ak', 'services.kling.secret_key' => 'test-sk-must-be-at-least-32-bytes-long']);
     $product = scriptApprovedProduct(['video_provider' => 'kling']);
 
     dispatch(new GenerateAssetsJob($product->id));

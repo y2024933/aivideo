@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\AudioMode;
+use App\Enums\BrowserTaskStatus;
+use App\Enums\BrowserTaskType;
 use App\Enums\ProductStatus;
 use App\Exceptions\IllegalStatusTransition;
 use App\Services\Compliance\AdComplianceChecker;
@@ -86,6 +88,20 @@ final class Product extends Model
     public function browserTasks(): MorphMany
     {
         return $this->morphMany(BrowserTask::class, 'subject');
+    }
+
+    /**
+     * 這個商品的資料是不是「降級抓取」來的（XHR 沒攔到，從 DOM 撈的）。
+     *
+     * ⚠️ 這是 checkpoint ① 自動放行的否決條件。DOM 解析的價格與規格可能缺漏或錯位，
+     * 而 ① 之後就開始花錢，資料來源不可靠時一定要人看。
+     */
+    public function hasDegradedScrape(): bool
+    {
+        return $this->browserTasks()
+            ->where('type', BrowserTaskType::ShopeeScrapeProduct)
+            ->where('status', BrowserTaskStatus::Degraded)
+            ->exists();
     }
 
     /**

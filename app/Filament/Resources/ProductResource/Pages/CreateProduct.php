@@ -7,6 +7,7 @@ namespace App\Filament\Resources\ProductResource\Pages;
 use App\Enums\ProductStatus;
 use App\Exceptions\InvalidShopeeLinkException;
 use App\Filament\Resources\ProductResource;
+use App\Jobs\ScrapeShopeeProductJob;
 use App\Models\Product;
 use App\Services\Shopee\ShopeeLinkParser;
 use Filament\Actions;
@@ -41,7 +42,11 @@ final class CreateProduct extends CreateRecord
     }
 
     /**
-     * P1 只建骨架：抓資料是 P5 的 Playwright 任務，這裡驗證連結合法後導去 Edit 頁人工補齊。
+     * 建骨架後派 ScrapeShopeeProductJob 去抓資料。
+     *
+     * 這裡刻意只建「骨架 + 派工」而不同步抓：一次抓取含瀏覽器啟動、攔 XHR 與內部
+     * backoff，最壞要兩三分鐘，撐在 HTTP request 裡一定逾時。抓完的狀態變化由
+     * status-poller 推給前端。
      */
     private function createFromShopeeLink(string $url): void
     {
@@ -72,7 +77,11 @@ final class CreateProduct extends CreateRecord
             'disclosure_prefix' => config('compliance.disclosure_prefix'),
         ]);
 
-        Notification::make()->success()->title('已建立商品骨架')->body('請補齊標題、價格與圖片後送審。')->send();
+        ScrapeShopeeProductJob::dispatch($product->id);
+
+        Notification::make()->success()->title('已建立商品，開始抓取資料')
+            ->body('抓取含瀏覽器操作，約需 1–3 分鐘。完成後狀態會變成「① 商品資料待確認」；若顯示降級抓取請逐欄核對。')
+            ->send();
         $this->redirect(ProductResource::getUrl('edit', ['record' => $product]));
     }
 }

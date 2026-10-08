@@ -79,3 +79,26 @@ it('禁止對外連線時，任何漏網的請求都會失敗而不是真的送�
     expect(fn () => Http::get('https://shopee.tw/api/v4/pdp/get_pc'))
         ->toThrow(RuntimeException::class);
 });
+
+it('掃描規則本身有效：故意放一個違規字串必須被抓到', function () {
+    // ⚠️ 上一條測試的對照組。沒有它的話，$forbidden 這個 regex 哪天被改壞
+    // （打錯一個反斜線、少一個 alternation），$offenders 會永遠是空陣列，
+    // 測試會「永遠綠」而完全失效 —— 跟它當初要防的靜默失效一模一樣。
+    $forbidden = '#(?:creator\.)?shopee\.tw|shope\.ee|susercontent\.com|dolai\.video'
+        . '|api\.klingai\.com|api\.anthropic\.com|generativelanguage\.googleapis\.com'
+        . '|fal\.run|\.tts\.speech\.microsoft\.com#i';
+
+    $samples = [
+        "Http::get('https://shopee.tw/api/v4/pdp/get_pc');",
+        "\$r = file_get_contents('https://generativelanguage.googleapis.com/v1beta/models');",
+        "curl('https://api.anthropic.com/v1/messages');",
+        "'https://down-tw.img.susercontent.com/file/abc'",
+    ];
+
+    foreach ($samples as $sample) {
+        expect(preg_match($forbidden, $sample))->toBe(1, "規則漏掉了：{$sample}");
+    }
+
+    // 正常的測試用假網域不該被誤判
+    expect(preg_match($forbidden, "Http::get('https://cdn.example.test/x.jpg');"))->toBe(0);
+});

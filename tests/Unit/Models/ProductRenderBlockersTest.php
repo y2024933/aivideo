@@ -73,3 +73,52 @@ it('blocks when tts mode has an unfinished voiceover', function () {
 it('blocks while another render is already running', function () {
     expect(renderReadyProduct(['render_id' => 'render_abc'])->renderBlockers())->toContain('已有渲染任務進行中');
 });
+
+// ─── 以下為 P10 補的對照組：原本每條 blocker 只驗「會擋」，沒驗「不該擋時不擋」 ───
+
+it('counts a b-roll shot as renderable even without a product image', function () {
+    // renderableUrl() 的另一半分支：video_status = done 時用 video_remote_url。
+    // 原本的測試只蓋到 image_remote_url，B-roll 這條路整個壞掉也不會紅。
+    $product = renderReadyProduct();
+    $product->shots->each(fn (Shot $s) => $s->update([
+        'image_remote_url' => null,
+        'video_status' => 'done',
+        'video_remote_url' => 'https://s3.test/videos/'.$s->shot_id.'.mp4',
+    ]));
+
+    expect($product->fresh()->renderBlockers())->toBe([]);
+});
+
+it('does not count a done b-roll shot that never got an s3 url', function () {
+    // video_status = done 但 remote_url 是 null → Lambda 讀不到，不算可渲染
+    $product = renderReadyProduct();
+    $product->shots->each(fn (Shot $s) => $s->update([
+        'image_remote_url' => null,
+        'video_status' => 'done',
+        'video_remote_url' => null,
+    ]));
+
+    expect($product->fresh()->renderBlockers())
+        ->toContain('可渲染鏡頭不足 2 個（需有 image_remote_url 或 video_remote_url）');
+});
+
+it('ignores compliance flags that are not glyph variants', function () {
+    // 對照組：字形以外的 flag（例如 warning 等級的誇大用語）不該擋渲染，
+    // 否則「有 compliance_flags 就擋」會讓所有有 warning 的商品都渲染不出來。
+    $product = renderReadyProduct();
+    $product->shots->first()->update(['compliance_flags' => [
+        ['category' => 'spec_overclaim', 'matched' => '續航', 'severity' => 'warning'],
+    ]]);
+
+    expect($product->fresh()->renderBlockers())->toBe([]);
+});
+
+it('reports every blocker at once instead of stopping at the first', function () {
+    // operator 要一次看到全部缺項；只回第一個會變成「修一個再被擋一次」的鬼打牆
+    $product = renderReadyProduct(['compliance_passed' => false, 'disclosure_prefix' => null, 'render_id' => 'render_x']);
+
+    expect($product->fresh()->renderBlockers())->toHaveCount(3)
+        ->toContain('合規檢查未通過')
+        ->toContain('未設定聯盟行銷揭露前綴')
+        ->toContain('已有渲染任務進行中');
+});

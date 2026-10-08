@@ -1,0 +1,19 @@
+{
+  "name": "aivideo-browser",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "瀏覽器自動化服務：Fastify + rebrowser-playwright，供 Laravel 以 HTTP 呼叫",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "first-login": "node scripts/first-login.mjs"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1",
+    "p-queue": "^8.1.0",
+    "rebrowser-playwright": "1.63.0"
+  }
+}

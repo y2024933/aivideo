@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\VideoProvider;
 use App\Services\Contracts\VideoGeneratorContract;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\Http;
@@ -86,6 +87,29 @@ final class KlingVideoGenerator implements VideoGeneratorContract
             'video_url' => $videoUrl,
             'error' => $data['task_status_msg'] ?? null,
         ];
+    }
+
+    public function name(): VideoProvider
+    {
+        return VideoProvider::Kling;
+    }
+
+    /**
+     * 兩把金鑰都要有才送得出任務。
+     *
+     * ⚠️ 直接讀 config 而不是看 $this->accessKey —— 建構子缺 key 就會丟例外，
+     *    所以能拿到實例時這裡一定是 true；VideoGeneratorFactory 判斷可用性時
+     *    是用 try/catch 建構，建不起來就當成 supports() = false。
+     */
+    public function supports(): bool
+    {
+        return filled(config('services.kling.access_key')) && filled(config('services.kling.secret_key'));
+    }
+
+    /** $0.21／5 秒 = $0.042／秒（V2.5 Turbo std） */
+    public function costPerSecond(): float
+    {
+        return (float) config('services.kling.cost_per_video', 0.21) / 5;
     }
 
     /** V2.5 Turbo 只支援 5 和 10 秒，自動 round */

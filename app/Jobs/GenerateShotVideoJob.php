@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Shot;
-use App\Services\Contracts\VideoGeneratorContract;
 use App\Services\Pipeline;
+use App\Services\Video\VideoGeneratorFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,7 +17,10 @@ use RuntimeException;
 use Throwable;
 
 /**
- * P5：單一鏡頭送 Kling 圖轉影片，送出後交給 PollKlingVideoJob 輪詢。
+ * P5：單一鏡頭送圖轉影片，送出後交給 PollKlingVideoJob 輪詢。
+ *
+ * provider 逐鏡解析（VideoGeneratorFactory::resolveFor），不吃單一全域綁定 ——
+ * 同一支影片可以混合 Kling 與純 Ken Burns。
  */
 final class GenerateShotVideoJob implements ShouldQueue
 {
@@ -30,7 +33,7 @@ final class GenerateShotVideoJob implements ShouldQueue
 
     public function __construct(public readonly string $shotId) {}
 
-    public function handle(VideoGeneratorContract $generator, Pipeline $pipeline): void
+    public function handle(VideoGeneratorFactory $videoFactory, Pipeline $pipeline): void
     {
         $shot = Shot::with('product')->find($this->shotId);
 
@@ -41,8 +44,8 @@ final class GenerateShotVideoJob implements ShouldQueue
         $prompt = $shot->video_prompt ?: self::DEFAULT_PROMPT;
 
         try {
-            // Kling 讀不到 localhost，一律給 S3 的公開 URL
-            $task = $generator->submitImageToVideo(
+            // 動畫供應商讀不到 localhost，一律給 S3 的公開 URL
+            $task = $videoFactory->resolveFor($shot)->submitImageToVideo(
                 $shot->image_remote_url ?: throw new RuntimeException('鏡頭沒有已同步 S3 的圖片'),
                 $prompt,
                 (int) ceil((float) $shot->duration_seconds ?: 5),

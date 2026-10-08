@@ -28,7 +28,8 @@ final class ShotFactory extends Factory
             'subtitle_has_simplified' => false,
             'ken_burns' => 'zoomIn',
             'fit' => 'contain',
-            'video_provider' => 'none',
+            // null = 繼承商品設定（VideoGeneratorFactory 的三層優先序）
+            'video_provider' => null,
             'video_status' => 'skipped',
             'voiceover_status' => 'skipped',
         ];

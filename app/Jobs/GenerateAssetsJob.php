@@ -10,6 +10,7 @@ use App\Enums\VideoProvider;
 use App\Models\Product;
 use App\Models\Shot;
 use App\Services\Pipeline;
+use App\Services\Video\VideoGeneratorFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,6 +25,14 @@ use Illuminate\Queue\SerializesModels;
  * 會被誤判成「全部完成」而提早推進狀態。
  *
  * 已經 done 的鏡頭不重做 —— 部分失敗重試時只補失敗的，不重付成功那幾鏡的錢。
+ *
+ * ⚠️ 動畫供應商一律經 VideoGeneratorFactory 逐鏡解析，**不可以**寫死成
+ *    「=== kling 才做」。寫死的版本在 video_provider = dola 時判斷為 false，
+ *    結果系統靜默什麼都不做：operator 以為設定生效了，但影片永遠不會產生，
+ *    而且沒有任何錯誤訊息。現在的規則是：
+ *      none       → video_status = skipped（不是 failed），正常往下走
+ *      不可用     → 明確 failed，原因寫進 shot.video_error 與 product.status_message
+ *      可用       → pending + 派工
  */
 final class GenerateAssetsJob implements ShouldQueue
 {
@@ -35,7 +44,7 @@ final class GenerateAssetsJob implements ShouldQueue
 
     public function __construct(public readonly string $productId) {}
 
-    public function handle(Pipeline $pipeline): void
+    public function handle(Pipeline $pipeline, VideoGeneratorFactory $videoFactory): void
     {
         $product = Product::find($this->productId);
 
@@ -46,8 +55,8 @@ final class GenerateAssetsJob implements ShouldQueue
         $product->transitionTo(ProductStatus::AssetsGenerating, 'system');
 
         $withVoice = (string) $product->audio_mode === AudioMode::Tts->value;
-        $withVideo = (string) $product->video_provider === VideoProvider::Kling->value;
         $voiceShots = $videoShots = [];
+        $blockers = [];
 
         foreach ($product->shots()->get() as $shot) {
             /** @var Shot $shot */
@@ -56,13 +65,38 @@ final class GenerateAssetsJob implements ShouldQueue
                 $voiceShots[] = $shot->id;
             }
 
-            if ($withVideo && $shot->video_status !== 'done') {
-                $shot->update(['video_status' => 'pending', 'video_provider' => VideoProvider::Kling->value, 'video_error' => null]);
-                $videoShots[] = $shot->id;
-            } elseif (! $withVideo && in_array($shot->video_status, ['pending', 'failed'], true)) {
-                // operator 重試前把動畫供應商改成 none：舊的失敗紀錄不清掉會永遠卡在 AssetsPartial
-                $shot->update(['video_status' => 'skipped']);
+            // setRelation 省掉逐鏡再查一次商品；shot.video_provider 為 null 時要靠它繼承
+            $provider = $videoFactory->providerFor($shot->setRelation('product', $product));
+
+            // ⚠️ 不回寫 shot.video_provider：那一欄是 operator 的覆寫（null = 繼承），
+            //    派工時釘成實際值的話，之後把商品改回 none 也關不掉這幾鏡的動畫。
+            if ($provider === VideoProvider::None) {
+                // 純 Ken Burns 不是失敗。順手清掉上一輪的 pending/failed，
+                // 否則 operator 把供應商改回 none 後會永遠卡在 AssetsPartial。
+                if ($shot->video_status !== 'done') {
+                    $shot->update(['video_status' => 'skipped', 'video_error' => null]);
+                }
+
+                continue;
             }
+
+            if ($shot->video_status === 'done') {
+                continue;
+            }
+
+            if ($reason = $videoFactory->unavailableReason($provider)) {
+                $shot->update(['video_status' => 'failed', 'video_error' => $reason]);
+                $blockers[$reason] = true;   // key 去重：3 個鏡頭同一個原因只講一次
+
+                continue;
+            }
+
+            $shot->update(['video_status' => 'pending', 'video_error' => null]);
+            $videoShots[] = $shot->id;
+        }
+
+        if ($blockers !== []) {
+            $product->update(['status_message' => implode(' ', array_keys($blockers))]);
         }
 
         array_map(fn (string $id) => GenerateShotVoiceoverJob::dispatch($id), $voiceShots);

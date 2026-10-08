@@ -9,6 +9,7 @@ use App\Enums\ShotRole;
 use App\Filament\Resources\ProductResource;
 use App\Models\ProductImage;
 use App\Models\Shot;
+use App\Services\Video\VideoGeneratorFactory;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -38,6 +39,11 @@ final class ShotsRelationManager extends RelationManager
             Forms\Components\Select::make('transition')->label('轉場')->options(ProductResource::TRANSITIONS)
                 ->placeholder('繼承商品的全域轉場')
                 ->helperText('留空 = 使用商品的全域轉場設定。'),
+            // 混合模式的入口：同一支影片可以只給幾個關鍵鏡頭做 AI 動畫，其餘走 Ken Burns
+            Forms\Components\Select::make('video_provider')->label('動畫供應商')
+                ->options(fn () => app(VideoGeneratorFactory::class)->availableOptions())
+                ->placeholder('繼承商品設定')
+                ->helperText('留空 = 用商品的動畫供應商。Kling 約 $0.042／秒（$0.21／5 秒）。'),
             Forms\Components\Select::make('fit')->label('縮放方式')
                 ->options(['contain' => 'contain（完整顯示，留黑邊）', 'cover' => 'cover（填滿，可能裁切）'])->default('contain'),
             Forms\Components\Textarea::make('scene_description')->label('場景描述')->rows(2)->columnSpanFull(),
@@ -63,6 +69,9 @@ final class ShotsRelationManager extends RelationManager
                     ->placeholder('繼承')
                     ->tooltip(fn (Shot $record) => '實際採用：' . $record->effectiveTransition()),
                 Tables\Columns\TextColumn::make('voiceover_status')->label('配音')->badge(),
+                Tables\Columns\TextColumn::make('video_provider')->label('動畫供應商')
+                    ->placeholder('繼承')
+                    ->tooltip(fn (Shot $record) => '實際採用：' . app(VideoGeneratorFactory::class)->providerFor($record)->getLabel()),
                 Tables\Columns\TextColumn::make('video_status')->label('動畫')->badge(),
             ])
             ->headerActions([Tables\Actions\CreateAction::make()->label('新增鏡頭')])

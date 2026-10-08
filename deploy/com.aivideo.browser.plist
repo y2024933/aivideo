@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mac 端的 launchd agent：負責把 browser 容器 + browser queue worker 拉起來。
+
+  安裝（一次性）：
+      cp deploy/com.aivideo.browser.plist ~/Library/LaunchAgents/
+      # ⚠️ 下面三個 Program 參數裡的路徑是硬編的，請先改成你機器上的實際路徑
+      launchctl load  -w ~/Library/LaunchAgents/com.aivideo.browser.plist
+      launchctl list | grep aivideo          # 確認已註冊
+      tail -f /tmp/aivideo-browser.log       # 看輸出
+
+  移除：
+      launchctl unload -w ~/Library/LaunchAgents/com.aivideo.browser.plist
+
+  ⚠️⚠️ launchd 的根本限制：它只能在 Mac「醒著」的時候工作。
+       KeepAlive + StartInterval 解決的是「程式掛掉」與「開機後沒啟動」，
+       完全解決不了「Mac 睡著了」—— 睡眠中 launchd 自己也停了，StartInterval
+       的計時器只會在醒來後補跑一次。
+
+       真正讓這台機器 24 小時能消費 browser queue 的是 pmset（電源管理），
+       必須另外設定，且 **本專案不會也不該自動執行它**（會改動系統電源行為）：
+
+           # 插電時永不睡眠（筆電闔蓋仍會睡，要配合 clamshell 外接電源 + 外接螢幕）
+           sudo pmset -c sleep 0 disksleep 0 displaysleep 10
+
+           # 每天 08:50 自動喚醒或開機（給 09:00 的執行時段留 10 分鐘暖機）
+           sudo pmset repeat wakeorpoweron MTWRFSU 08:50:00
+
+           # 確認
+           pmset -g sched
+           pmset -g custom
+
+       StartInterval=300 的意義就在這裡：Mac 睡醒 / 開機 / Docker Desktop 重啟後，
+       最多 5 分鐘內會有一次 `docker compose --profile browser up -d` 把容器補起來。
+       `up -d` 對已在跑的服務是 no-op，所以重複執行是安全的。
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.aivideo.browser</string>
+
+    <!--
+      ⚠️ 不要直接呼叫 docker：launchd 的 PATH 極小（不含 /usr/local/bin、
+         /Applications/Docker.app/...），而且 Docker Desktop 剛登入時還沒起來。
+         所以包一層 bash -lc，並讓腳本自己等 docker daemon。
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>cd /Users/paul/Desktop/aivideo &amp;&amp; exec ./deploy/mac-browser-up.sh</string>
+    </array>
+
+    <!-- 登入後立刻跑一次 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!--
+      KeepAlive + SuccessfulExit=false：腳本正常結束（exit 0）就不重啟，
+      異常結束才重啟。腳本本身是「確保容器在跑」的 idempotent 動作，不是常駐程式，
+      所以不能用無條件 KeepAlive（會變成無限重啟迴圈）。
+    -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- 每 5 分鐘複查一次（睡醒 / Docker 重啟 / 容器被手動停掉的自動修復） -->
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <!-- 1 CPU 的 Docker VM 很容易被搶光，降低優先度讓 Paul 自己用電腦不卡 -->
+    <key>Nice</key>
+    <integer>5</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/aivideo-browser.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/aivideo-browser.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

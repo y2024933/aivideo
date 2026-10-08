@@ -1,0 +1,40 @@
+{
+  "__comment": "⚠️ 這份是手寫的假資料，不是真實抓取結果。蝦皮不可以為了更新 fixture 去抓 —— 封的是帳號，而帳號只能人工 SMS OTP 恢復。欄位名與巢狀結構照 get_pc 的形狀，價格刻意保留 ×100000 的原始單位。",
+  "error": null,
+  "error_msg": null,
+  "data": {
+    "item": {
+      "shop_id": 111,
+      "item_id": 222,
+      "title": "無線藍牙耳機 ANC主動降噪 續航32小時",
+      "description": "主動降噪、單次續航 8 小時。\n附充電盒總續航 32 小時。\n支援 IPX5 防水。",
+      "brand": "SoundCore",
+      "currency": "TWD",
+      "price": 129000000,
+      "price_min": 129000000,
+      "price_max": 159000000,
+      "price_before_discount": 199000000,
+      "stock": 42,
+      "historical_sold": 5678,
+      "global_sold_count": 6100,
+      "item_rating": {
+        "rating_star": 4.8266,
+        "rating_count": [1234, 5, 10, 40, 300, 879]
+      },
+      "images": [
+        "tw-11134207-7r98o-fixturehash000001",
+        "tw-11134207-7r98o-fixturehash000002",
+        "tw-11134207-7r98o-fixturehash000003"
+      ],
+      "tier_variations": [
+        { "name": "顏色", "options": ["曜石黑", "雲霧白"] },
+        { "name": "組合", "options": ["單耳機", "耳機+收納包"] }
+      ],
+      "categories": [
+        { "catid": 10, "display_name": "手機平板與周邊" },
+        { "catid": 20, "display_name": "耳機與喇叭" },
+        { "catid": 30, "display_name": "藍牙耳機" }
+      ]
+    }
+  }
+}

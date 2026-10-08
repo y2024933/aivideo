@@ -10,6 +10,7 @@ use App\Filament\Resources\ProductResource\Pages\ListProducts;
 use App\Filament\Resources\ProductResource\RelationManagers\ImagesRelationManager;
 use App\Filament\Resources\ProductResource\RelationManagers\ShotsRelationManager;
 use App\Jobs\GenerateScriptJob;
+use App\Jobs\ScrapeShopeeProductJob;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\Shot;
@@ -38,7 +39,11 @@ it('renders the edit page', function () {
     Livewire::test(EditProduct::class, ['record' => $product->getKey()])->assertSuccessful();
 });
 
-it('creates a product skeleton from a shopee link', function () {
+it('creates a product skeleton from a shopee link and queues the scrape', function () {
+    // ⚠️ 一定要 Queue::fake：不 fake 的話 ScrapeShopeeProductJob 會在這裡同步執行，
+    //    測試就變成在驗證抓取流程（而且會受執行時段與節流影響而隨機紅）。
+    Queue::fake();
+
     Livewire::test(CreateProduct::class)
         ->callAction('createFromShopeeLink', ['url' => 'https://shopee.tw/耳機-i.111.222']);
 
@@ -48,8 +53,14 @@ it('creates a product skeleton from a shopee link', function () {
         ->and($product->shopee_shop_id)->toBe(111)
         ->and($product->shopee_item_id)->toBe(222)
         ->and($product->source_url)->toBe('https://shopee.tw/product/111/222')
+        // 狀態轉移由 Job 自己做（draft → importing → product_pending_review）
         ->and($product->status)->toBe(ProductStatus::Draft)
         ->and($product->disclosure_prefix)->toBe(config('compliance.disclosure_prefix'));
+
+    Queue::assertPushed(
+        ScrapeShopeeProductJob::class,
+        fn (ScrapeShopeeProductJob $job) => $job->productId === $product->id && $job->queue === 'browser',
+    );
 });
 
 it('does not create a record for an invalid shopee link', function () {

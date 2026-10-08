@@ -32,7 +32,15 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        config(['services.use_real_apis' => false]);
+        config([
+            'services.use_real_apis' => false,
+            // ⚠️ phpunit.xml:27 的 QUEUE_CONNECTION=sync 擋不住 —— docker compose 把
+            //    .env.docker 的 QUEUE_CONNECTION=redis 注入成容器真實環境變數，
+            //    $_SERVER 已有值時 Laravel 讀到的是 redis，dispatch() 會把 job 丟進
+            //    Redis 而不是同步執行，job 永遠不跑而測試只會看到「狀態沒變」。
+            //    跟 use_real_apis 同一個陷阱，一樣只能在這裡直接改 config。
+            'queue.default' => 'sync',
+        ]);
 
         // S3 一律 fake：AWS 憑證在測試環境同樣有效，不攔住就會真的寫進 production bucket
         Storage::fake('s3');

@@ -102,7 +102,11 @@ final class GenerateScriptJob implements ShouldQueue
             $product->addLlmCost((float) ($usage['cost_usd'] ?? 0));
 
             $fields = ScriptFields::fromOutput($product, $output);
-            $report = $checker->check($fields, (string) ($product->compliance_profile ?: 'general'));
+            $report = $checker->check(
+                $fields,
+                (string) ($product->compliance_profile ?: 'general'),
+                ['disclosure_prefix' => (string) $product->disclosure_prefix],
+            );
             $simplified = array_keys(array_filter($fields, fn (string $text) => $zhTw->findSimplifiedChars($text) !== []));
             $overlong = $this->overlongSubtitles($output);
 

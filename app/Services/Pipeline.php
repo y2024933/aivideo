@@ -6,13 +6,13 @@ namespace App\Services;
 
 use App\Enums\AudioMode;
 use App\Enums\ProductStatus;
-use App\Enums\VideoProvider;
 use App\Filament\Resources\ProductResource;
 use App\Jobs\GenerateAssetsJob;
 use App\Jobs\GenerateScriptJob;
 use App\Jobs\SubmitRenderJob;
 use App\Models\Product;
 use App\Models\Shot;
+use App\Services\Video\VideoGeneratorFactory;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,10 +26,18 @@ final class Pipeline
 {
     private const AUTOPILOT = 'autopilot';
 
-    /** ① 送審後：資料齊全就自動核准，直接開始寫稿 */
+    /**
+     * ① 送審後：資料齊全就自動核准，直接開始寫稿。
+     *
+     * ⚠️ 降級抓取（strategy = dom）絕不自動放行。DOM 解析拿到的價格與規格可能缺漏或
+     * 錯位，而 ① 之後就是花錢寫稿、生素材、渲染 —— 資料來源不可靠時一定要人看一眼。
+     */
     public function afterProductSubmitted(Product $product): void
     {
-        if (! config('video.autopilot.product') || ProductResource::approvalBlockers($product) !== []) {
+        if ($product->status !== ProductStatus::ProductPendingReview
+            || ! config('video.autopilot.product')
+            || $product->hasDegradedScrape()
+            || ProductResource::approvalBlockers($product) !== []) {
             return;
         }
 
@@ -99,10 +107,14 @@ final class Pipeline
     /**
      * ③ 素材完成後：沒有 AI 生成的動畫（純商品圖 + Ken Burns + TTS）就沒什麼好看的，
      * 自動放行；有 Kling／Dola 動畫則一定停下來讓人看有沒有變形。
+     *
+     * ⚠️ 判斷依據是「逐鏡解析後有沒有任何一鏡不是 none」，不是看 product.video_provider ——
+     *    鏡頭可以各自覆寫供應商，只看商品那一欄的話，混合模式（商品 none + 某幾鏡 kling）
+     *    會讓 AI 動畫不經人眼直接進渲染。
      */
     public function afterAssetsReady(Product $product): void
     {
-        if (! config('video.autopilot.assets') || (string) $product->video_provider !== VideoProvider::None->value) {
+        if (! config('video.autopilot.assets') || app(VideoGeneratorFactory::class)->hasAiMotion($product)) {
             return;
         }
 

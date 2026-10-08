@@ -51,7 +51,7 @@ final class AdComplianceChecker
             }
 
             if (($rule['check'] ?? null) === 'disclosure_prefix') {
-                array_push($raw, ...$this->checkDisclosure($ruleId, $rule, $fields));
+                array_push($raw, ...$this->checkDisclosure($ruleId, $rule, $fields, $context));
 
                 continue;
             }
@@ -330,14 +330,20 @@ final class AdComplianceChecker
      * @param  array<string, string>  $fields
      * @return list<array<string, mixed>>
      */
-    private function checkDisclosure(string $ruleId, array $rule, array $fields): array
+    private function checkDisclosure(string $ruleId, array $rule, array $fields, array $context = []): array
     {
         if (! array_key_exists('caption', $fields)) {
             return [];
         }
 
         $caption = (string) $fields['caption'];
-        $prefix = trim((string) config('compliance.disclosure_prefix', ''));
+        // ⚠️ 必須用「這個商品實際使用的前綴」而不是 config 的全域預設。
+        //    disclosure_prefix 在 Filament 是可逐商品自由編輯的必填欄位，而
+        //    ScriptFields 組 caption 時用的也是 $product->disclosure_prefix。
+        //    這裡若寫死 config，operator 只要改過前綴（哪怕只是調語氣），
+        //    合規就永遠 blocking，而錯誤訊息是「貼文第一行必須有揭露句」——
+        //    他看得到揭露句就在第一行，完全無法自救。
+        $prefix = trim((string) ($context['disclosure_prefix'] ?? config('compliance.disclosure_prefix', '')));
         $ok = $prefix !== '' && str_starts_with(trim($caption), $prefix);
 
         if ($ok && (bool) config('compliance.disclosure_rules.must_be_first_line', true)) {
